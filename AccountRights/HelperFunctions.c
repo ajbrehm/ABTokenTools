@@ -20,8 +20,10 @@ void WriteLine(LPCWSTR sz)
 
 void WriteDW(DWORD dw)
 {
-	size_t buffersize = 20 * sizeof(WCHAR);
-	LPWSTR sz = GlobalAlloc(0, buffersize);
-	_ultow_s(dw, sz, buffersize, 10);
+	size_t cch = 20;
+	size_t cb = cch * sizeof(WCHAR);
+	LPWSTR sz = (LPWSTR)GlobalAlloc(0, cb);
+	if (NULL == sz) { return; }
+	_ultow_s(dw, sz, cch, 10);
 	WriteLine(sz);
 }
