@@ -1,3 +1,5 @@
+#define SECURITY_WIN32
+
 #include <Windows.h>
 #include <securitybaseapi.h>
 #include <processthreadsapi.h>
@@ -74,7 +76,7 @@ int main()
 
 		// prepare an origin
 		LSA_STRING lsaOrigin;
-		lsaOrigin.Buffer = L"TokenTest";
+		lsaOrigin.Buffer = _strdup("Test");
 		lsaOrigin.Length = wcslen(lsaOrigin.Buffer) * sizeof(WCHAR) + sizeof(WCHAR);
 
 		// prepare authentication package
@@ -82,7 +84,6 @@ int main()
 		LSA_STRING lsaAuthenticationPackage;
 		lsaAuthenticationPackage.Buffer = NEGOSSP_NAME_W;
 		lsaAuthenticationPackage.Length = (USHORT)wcslen(lsaAuthenticationPackage.Buffer);
-		lsaAuthenticationPackage.MaximumLength = lsaAuthenticationPackage.MaximumLength;
 		ok = LsaLookupAuthenticationPackage(hLsaConnection, &lsaAuthenticationPackage, &authenticationpackage);
 		
 		// prepare authentication info
@@ -99,6 +100,27 @@ int main()
 
 		// prepare a token source
 		TOKEN_SOURCE source;
+		ok = strcpy_s(source.SourceName, 8, "Test");
+		LUID luid;
+		luid.HighPart = 0;
+		luid.LowPart = 0;
+		source.SourceIdentifier = luid;
+
+		// other parameters
+		PVOID pProfile = NULL;
+		ULONG cbProfile = 0;
+		PLUID pLogonId = (PLUID)GlobalAlloc(0, sizeof(LUID));
+		if (NULL == pLogonId) { return 1; }
+		QUOTA_LIMITS quota;
+		NTSTATUS substatus;
+
+		// call
+		ok = LsaLogonUser(hLsaConnection, &lsaOrigin, Batch, authenticationpackage, &logon, cbAuthenticationInfo, NULL, &source, &pProfile, &cbProfile, pLogonId, &hToken, &quota, &substatus);
+
+		if (ok) {
+			WriteLine(L"Hurray!");
+		}//if
+		
 		
 
 	}//if
