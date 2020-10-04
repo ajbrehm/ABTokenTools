@@ -10,7 +10,7 @@ HANDLE hOut;
 DWORD error;
 LPWSTR* aCommandLine;
 int args = 0;
-BOOL ok;
+DWORD ok;
 
 void Write(LPCWSTR sz)
 {
@@ -36,6 +36,7 @@ void WriteDW(DWORD dw)
 	if (NULL == sz) { return; }
 	_ultow_s(dw, sz, cch, 10);
 	WriteLine(sz);
+	GlobalFree(sz);
 }
 
 void ConfigureCommandLine()
@@ -50,10 +51,14 @@ int main()
 	
 	HANDLE hToken = GetCurrentProcessToken();
 
-	if (2 == args) {
-
-		LPWSTR sUserName = aCommandLine[1];
+	if (2 <= args) {
 		
+		LPWSTR sUserName = aCommandLine[1];
+		LPWSTR sDomainName = L"";
+		if (args > 2) {
+			sDomainName = aCommandLine[2];
+		}//if
+
 		HANDLE hLsaConnection;
 		ok = LsaConnectUntrusted(&hLsaConnection);
 
@@ -76,52 +81,71 @@ int main()
 
 		// prepare an origin
 		LSA_STRING lsaOrigin;
-		lsaOrigin.Buffer = _strdup("Test");
-		lsaOrigin.Length = wcslen(lsaOrigin.Buffer) * sizeof(WCHAR) + sizeof(WCHAR);
-
-		// prepare authentication package
-		ULONG authenticationpackage = 0;
-		LSA_STRING lsaAuthenticationPackage;
-		lsaAuthenticationPackage.Buffer = NEGOSSP_NAME_W;
-		lsaAuthenticationPackage.Length = (USHORT)wcslen(lsaAuthenticationPackage.Buffer);
-		ok = LsaLookupAuthenticationPackage(hLsaConnection, &lsaAuthenticationPackage, &authenticationpackage);
+		lsaOrigin.Buffer = _strdup("TEST");
+		lsaOrigin.Length = 4;
+		lsaOrigin.MaximumLength = 4;
 		
+		// prepare authentication package
+		ULONG authenticationpackageid = 0;
+		LSA_STRING lsaAuthenticationPackage;
+		lsaAuthenticationPackage.Buffer = MSV1_0_PACKAGE_NAME;
+		lsaAuthenticationPackage.Length = (USHORT)strlen(lsaAuthenticationPackage.Buffer);
+		lsaAuthenticationPackage.MaximumLength = lsaAuthenticationPackage.Length;
+		ok = LsaLookupAuthenticationPackage(hLsaConnection, &lsaAuthenticationPackage, &authenticationpackageid);
+
+		WriteDW(ok);
+
 		// prepare authentication info
-		ULONG cchUserName = wcslen(sUserName);
-		ULONG cbUserName = cchUserName * sizeof(WCHAR) + sizeof(WCHAR);
-		ULONG cbAuthenticationInfo = sizeof(MSV1_0_S4U_LOGON) + cbUserName;
+		USHORT cchUserName = (USHORT)wcslen(sUserName);
+		USHORT cbUserName = cchUserName * sizeof(WCHAR);
+		//USHORT cchPassword = (USHORT)wcslen(sPassword);
+		//USHORT cbPassword = cchPassword * sizeof(WCHAR);
+		USHORT cchDomainName = (USHORT)wcslen(sDomainName);
+		USHORT cbDomainName = cchDomainName * sizeof(WCHAR);
+		ULONG cbAuthenticationInfo = sizeof(MSV1_0_S4U_LOGON) + cbUserName + cbDomainName;
+		LPBYTE pAuthenticationInfoBuffer = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, cbAuthenticationInfo);
+		if (!pAuthenticationInfoBuffer) { return 1; }
+		MSV1_0_S4U_LOGON* pAuthenticationInfo = (MSV1_0_S4U_LOGON*)pAuthenticationInfoBuffer;
+		pAuthenticationInfo->MessageType = MsV1_0S4ULogon;
+		size_t offset = sizeof(MSV1_0_S4U_LOGON);
 		UNICODE_STRING unisUserName;
-		unisUserName.Buffer = sUserName;
 		unisUserName.Length = cbUserName;
-		MSV1_0_S4U_LOGON logon;
-		logon.Flags = MSV1_0_S4U_LOGON_FLAG_CHECK_LOGONHOURS;
-		logon.MessageType = MsV1_0S4ULogon;
-		logon.UserPrincipalName = unisUserName;
+		unisUserName.MaximumLength = cbUserName;
+		unisUserName.Buffer = (PWSTR)(pAuthenticationInfoBuffer + offset);
+		memcpy(unisUserName.Buffer, sUserName, cbUserName);
+		pAuthenticationInfo->UserPrincipalName = unisUserName;
+		offset += cbUserName;
+		UNICODE_STRING unisDomainName;
+		unisDomainName.Length = cbDomainName;
+		unisDomainName.MaximumLength = cbDomainName;
+		unisDomainName.Buffer = (PWSTR)(pAuthenticationInfoBuffer + offset);
+		memcpy(unisDomainName.Buffer, sDomainName, cbDomainName);
+		pAuthenticationInfo->DomainName = unisDomainName;
+		LPWSTR pTest = (LPWSTR)(pAuthenticationInfoBuffer + sizeof(MSV1_0_S4U_LOGON));
 
 		// prepare a token source
 		TOKEN_SOURCE source;
 		ok = strcpy_s(source.SourceName, 8, "Test");
-		LUID luid;
-		luid.HighPart = 0;
-		luid.LowPart = 0;
-		source.SourceIdentifier = luid;
-
+		ok = AllocateLocallyUniqueId(&source.SourceIdentifier);
+		
 		// other parameters
+		PTOKEN_GROUPS pTokenGroups = NULL;
 		PVOID pProfile = NULL;
 		ULONG cbProfile = 0;
-		PLUID pLogonId = (PLUID)GlobalAlloc(0, sizeof(LUID));
-		if (NULL == pLogonId) { return 1; }
+		LUID logonid;
+		ok = AllocateLocallyUniqueId(&logonid);
 		QUOTA_LIMITS quota;
-		NTSTATUS substatus;
+		NTSTATUS substatus = 0;
 
 		// call
-		ok = LsaLogonUser(hLsaConnection, &lsaOrigin, Batch, authenticationpackage, &logon, cbAuthenticationInfo, NULL, &source, &pProfile, &cbProfile, pLogonId, &hToken, &quota, &substatus);
+		ok = LsaLogonUser(hLsaConnection, &lsaOrigin, Batch, authenticationpackageid, pAuthenticationInfo, cbAuthenticationInfo, pTokenGroups, &source, &pProfile, &cbProfile, &logonid, &hToken, &quota, &substatus);
+		WriteDW(ok);
+		error = LsaNtStatusToWinError(ok);
+		WriteDW(error);
 
-		if (ok) {
-			WriteLine(L"Hurray!");
-		}//if
-		
-		
+		// free
+		HeapFree(GetProcessHeap(), 0, pAuthenticationInfoBuffer);
+
 
 	}//if
 
