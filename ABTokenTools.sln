@@ -15,9 +15,9 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CopyAsBackup", "CopyAsBacku
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SessionForPId", "SessionForPId\SessionForPId.vcxproj", "{58538474-AB85-45BD-8297-33A71E1876FD}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TokenTest", "TokenTest\TokenTest.vcxproj", "{B1D22C14-7119-4D10-9693-0054546F1513}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "S4ULogon", "S4ULogon\S4ULogon.vcxproj", "{B1D22C14-7119-4D10-9693-0054546F1513}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NTokenTest", "NTokenTest\NTokenTest.csproj", "{E4741392-4595-4505-841D-7226D8088EF3}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TokenTest", "TokenTest\TokenTest.csproj", "{E4741392-4595-4505-841D-7226D8088EF3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
