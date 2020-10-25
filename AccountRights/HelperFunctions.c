@@ -26,8 +26,5 @@ void WriteDW(DWORD dw)
 	if (NULL == sz) { return; }
 	_ultow_s(dw, sz, cch, 10);
 	WriteLine(sz);
-<<<<<<< HEAD
-=======
 	GlobalFree(sz);
->>>>>>> TokenTest
 }
