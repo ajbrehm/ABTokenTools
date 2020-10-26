@@ -27,7 +27,7 @@
 HANDLE hOut;
 BOOL result;
 DWORD error;
-BOOL debug = FALSE;
+BOOL debug = TRUE;
 
 void Write(LPCWSTR sz)
 {
@@ -51,6 +51,7 @@ void WriteDW(DWORD dw)
 {
 	size_t buffersize = 20 * sizeof(WCHAR);
 	LPWSTR sz = GlobalAlloc(0, buffersize);
+	if (NULL==sz) { exit(1); }
 	_ultow_s(dw, sz, buffersize, 10);
 	WriteLine(sz);
 }
