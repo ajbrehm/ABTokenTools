@@ -27,7 +27,7 @@ using System.Text;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
 
-namespace NTokenTest
+namespace TokenTest
 {
     class Program
     {

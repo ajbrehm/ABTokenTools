@@ -19,7 +19,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "S4ULogon", "S4ULogon\S4ULog
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TokenTest", "TokenTest\TokenTest.csproj", "{E4741392-4595-4505-841D-7226D8088EF3}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LSAAttack", "LSAAttack\LSAAttack.vcxproj", "{CB5FFB21-11EE-4E02-B63A-129A812E850A}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DecryptLsaSecrets", "DecryptLsaSecrets\DecryptLsaSecrets.vcxproj", "{CB5FFB21-11EE-4E02-B63A-129A812E850A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
