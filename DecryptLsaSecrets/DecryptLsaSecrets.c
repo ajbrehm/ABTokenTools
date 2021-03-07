@@ -65,9 +65,7 @@ int main()
 	int count = 0;
 	LPWSTR* aCommandLine = CommandLineToArgvW(szCommandLine, &count);
 	LPWSTR szPID = aCommandLine[1];
-
-	// szPID contains a process id string, if not, make the process id 1000 just for fun
-	if (NULL == szPID) { szPID = L"1344"; }
+	LPWSTR szServiceName = aCommandLine[2];
 
 	// read the process id into a DWORD
 	DWORD pid = (DWORD)_wtol(szPID);
@@ -108,9 +106,9 @@ int main()
 	lusLocalSystem.MaximumLength = 0;
 
 	LSA_UNICODE_STRING lusSecretLocation;
-	lusSecretLocation.Buffer = L"MySecret";
-	lusSecretLocation.Length = wcslen(lusSecretLocation.Buffer) * sizeof(WCHAR);;
-	lusSecretLocation.MaximumLength = lusSecretLocation.Length+1;
+	lusSecretLocation.Buffer = aCommandLine[2];
+	lusSecretLocation.Length = wcslen(lusSecretLocation.Buffer) * sizeof(WCHAR);
+	lusSecretLocation.MaximumLength = lusSecretLocation.Length;
 
 	// LsaOpenPolicy
 	LSA_HANDLE hPolicy = NULL;
@@ -126,6 +124,7 @@ int main()
 	wprintf(L"%s\n", plusSecret->Buffer);
 	
 	// frees
+	GlobalFree(lusSecretLocation.Buffer);
 	LsaFreeMemory(plusSecret);
 	LsaClose(hPolicy);
 }
