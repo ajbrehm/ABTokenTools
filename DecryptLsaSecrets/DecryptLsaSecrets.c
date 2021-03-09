@@ -124,7 +124,6 @@ int main()
 	wprintf(L"%s\n", plusSecret->Buffer);
 	
 	// frees
-	GlobalFree(lusSecretLocation.Buffer);
 	LsaFreeMemory(plusSecret);
 	LsaClose(hPolicy);
 }
