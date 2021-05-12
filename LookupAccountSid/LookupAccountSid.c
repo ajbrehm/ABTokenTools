@@ -22,29 +22,9 @@
 
 #include <Windows.h>
 #include <sddl.h>
+#include <wchar.h>
 
-HANDLE hOut;
 HANDLE hHeap;
-
-int Write(LPWSTR sz)
-{
-	if (NULL == hOut) {
-		hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-	}//if
-	DWORD length = (DWORD)wcslen(sz);
-	DWORD written = 0;
-	WriteConsoleW(hOut, sz, length, &written, NULL);
-	return written;
-}
-
-int WriteLine(LPWSTR sz)
-{
-	DWORD written = 0;
-	written += Write(sz);
-	written += Write(L"\n");
-	return written;
-
-}
 
 int main()
 {
@@ -62,7 +42,7 @@ int main()
 	LPWSTR szAccountName = HeapAlloc(hHeap, 0, cchAccountName * sizeof(WCHAR));
 	LPWSTR szDomainName = HeapAlloc(hHeap, 0, cchDomainName * sizeof(WCHAR));
 	LookupAccountSidW(NULL, pSid, szAccountName, &cchAccountName, szDomainName, &cchDomainName, &use);
-	WriteLine(szAccountName);
+	wprintf(L"%s\n",szAccountName);
 	HeapFree(hHeap, 0, pSid);
 	pSid = NULL;
 	HeapFree(hHeap, 0, szAccountName);

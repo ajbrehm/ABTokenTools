@@ -39,6 +39,7 @@
     <ProjectGuid>{98F756FB-F335-4730-A80A-67FBCB527A66}</ProjectGuid>
     <RootNamespace>LookupAcccountName</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>LookupAccountName</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
