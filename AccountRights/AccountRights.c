@@ -22,12 +22,13 @@
 
 #include <Windows.h>
 #include <NTSecAPI.h>
-#include "HelperFunctions.h"
+#include <WCHAR.h>
 
 LSA_HANDLE hPolicy;
 PSID pSid = NULL;
 LPWSTR* aCommandLine;
 int args = 0;
+DWORD error = 0;
 
 void OpenPolicy()
 {
@@ -62,7 +63,7 @@ DWORD AccountRights(PSID pSid)
 	{
 		LSA_UNICODE_STRING lsaUserRight = aUserRight[right];
 		LPWSTR szUserRight = lsaUserRight.Buffer;
-		WriteLine(szUserRight);
+		wprintf(L"%s\n",szUserRight);
 	}//for
 	return rights;
 }
@@ -87,10 +88,20 @@ void ConfigureCommandLine()
 	aCommandLine = CommandLineToArgvW(szCommandLine, &args);
 }
 
+void Help()
+{
+	wprintf(L"%s\n", L"AccountRights by Andrew Brehm, Version 0.2 (WCHAR)");
+	wprintf(L"%s\n", L"Usage: AccountRights <username> [<rightprivilege>] [REMOVE]");
+	wprintf(L"%s\n", L"Example: AccountRights hubert");
+	wprintf(L"%s\n", L"Example: AccountRights hubert SeBatchLogonRight");
+	wprintf(L"%s\n", L"Example: AccountRights hubert SeBatchLogonRight REMOVE");
+	exit(0);
+}
+
 int main()
 {
 	ConfigureCommandLine();
-	if (args < 2) { return 0; }
+	if (args < 2) { Help(); }
 	OpenPolicy();
 
 	LPWSTR szUserName = aCommandLine[1];
@@ -98,7 +109,7 @@ int main()
 	TranslateUserNameToSid(szUserName);
 
 	DWORD rights = AccountRights(pSid);
-	WriteDW(rights);
+	wprintf(L"%d\n",rights);
 	if (args < 3) { return 0; }
 
 	LPWSTR szPrivilege = aCommandLine[2];
@@ -115,7 +126,7 @@ int main()
 	}//if
 
 	rights = AccountRights(pSid);
-	WriteDW(rights);
+	wprintf(L"%d\n",rights);
 
 	GlobalFree(pSid);
 	ClosePolicy();

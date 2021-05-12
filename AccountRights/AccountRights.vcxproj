@@ -245,10 +245,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AccountRights.c" />
-    <ClCompile Include="HelperFunctions.c" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="HelperFunctions.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
