@@ -123,6 +123,9 @@ namespace TokenTest
 
         static void Main(string[] args)
         {
+            Console.WriteLine("TokenTest.exe [upn]");
+            Console.WriteLine("Without a User Principal Name, TokenTest will display values for current token.");
+
             // get token
             IntPtr pToken = WindowsIdentity.GetCurrent().Token;
             if (Environment.GetCommandLineArgs().Length > 1) {
