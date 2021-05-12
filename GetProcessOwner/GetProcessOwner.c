@@ -24,37 +24,9 @@
 #include <wchar.h>
 #define ERRORSIZE 40
 
-HANDLE hOut;
 BOOL result;
 DWORD error;
 BOOL debug = TRUE;
-
-void Write(LPCWSTR sz)
-{
-	if (NULL == hOut) {
-		hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-	}//if
-	
-	DWORD length = (DWORD)wcslen(sz);
-	DWORD written = 0;
-
-	WriteConsoleW(hOut, sz, length, &written, NULL);
-}
-
-void WriteLine(LPCWSTR sz)
-{
-	Write(sz);
-	Write(L"\n");
-}
-
-void WriteDW(DWORD dw)
-{
-	size_t buffersize = 20 * sizeof(WCHAR);
-	LPWSTR sz = GlobalAlloc(0, buffersize);
-	if (NULL==sz) { exit(1); }
-	_ultow_s(dw, sz, buffersize, 10);
-	WriteLine(sz);
-}
 
 void Error(LPCWSTR szFunctionName)
 {
@@ -63,9 +35,7 @@ void Error(LPCWSTR szFunctionName)
 		if (0 != error) {
 			WCHAR szError[ERRORSIZE];
 			_ultow_s(error, szError, sizeof(szError) / sizeof(WCHAR), 10);
-			Write(szFunctionName);
-			Write(L" error ");
-			WriteLine(szError);
+			wprintf(L"%s error %d\n",szFunctionName,error);
 			error = 0;
 		}//if
 	}//if
@@ -110,11 +80,13 @@ int main()
 		tokeninformationlength = 0;
 		GetTokenInformation(hToken, TokenPrivileges, NULL, tokeninformationlength, &tokeninformationlength);
 		PTOKEN_INFORMATION_CLASS pTokenInformation = GlobalAlloc(0, tokeninformationlength);
+		if (NULL == pTokenInformation) {
+			return GetLastError();
+		}//if
 		GetTokenInformation(hToken, TokenPrivileges, pTokenInformation, tokeninformationlength, &tokeninformationlength);
 		PTOKEN_PRIVILEGES pTokenPrivileges = (PTOKEN_PRIVILEGES)pTokenInformation;
 		int privileges = pTokenPrivileges->PrivilegeCount;
-		Write(L"Number of process privileges: ");
-		WriteDW(privileges);
+		wprintf(L"Number of process privileges: %d\n",privileges);
 		for (int privilege = 0; privilege < privileges; privilege++)
 		{
 			LUID_AND_ATTRIBUTES laa = pTokenPrivileges->Privileges[privilege];
@@ -124,7 +96,7 @@ int main()
 			LookupPrivilegeNameW(NULL, &luid, NULL, &privilegenamelength);
 			LPWSTR szPrivilegeName = GlobalAlloc(0, privilegenamelength * sizeof(WCHAR));
 			LookupPrivilegeNameW(NULL, &luid, szPrivilegeName, &privilegenamelength);
-			WriteLine(szPrivilegeName);
+			wprintf(L"%s\n",szPrivilegeName);
 			GlobalFree(szPrivilegeName);
 		}//for
 
