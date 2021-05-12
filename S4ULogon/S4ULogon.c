@@ -28,39 +28,12 @@
 #include <processthreadsapi.h>
 #include <NTSecAPI.h>
 #include <security.h>
+#include <wchar.h>
 
-HANDLE hOut;
 DWORD error;
 LPWSTR* aCommandLine;
 int args = 0;
 DWORD ok;
-
-void Write(LPCWSTR sz)
-{
-	if (NULL == hOut) {
-		hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-	}//if
-	DWORD length = lstrlenW(sz);
-	DWORD written = 0;
-	WriteConsoleW(hOut, sz, length, &written, NULL);
-}
-
-void WriteLine(LPCWSTR sz)
-{
-	Write(sz);
-	Write(L"\n");
-}
-
-void WriteDW(DWORD dw)
-{
-	size_t cch = 20;
-	size_t cb = cch * sizeof(WCHAR);
-	LPWSTR sz = (LPWSTR)GlobalAlloc(0, cb);
-	if (NULL == sz) { return; }
-	_ultow_s(dw, sz, cch, 10);
-	WriteLine(sz);
-	GlobalFree(sz);
-}
 
 void ConfigureCommandLine()
 {
@@ -116,7 +89,7 @@ int main()
 		lsaAuthenticationPackage.MaximumLength = lsaAuthenticationPackage.Length;
 		ok = LsaLookupAuthenticationPackage(hLsaConnection, &lsaAuthenticationPackage, &authenticationpackageid);
 
-		WriteDW(ok);
+		wprintf(L"%d\n",ok);
 
 		// prepare authentication info
 		USHORT cchUserName = (USHORT)wcslen(sUserName);
@@ -160,9 +133,9 @@ int main()
 
 		// call
 		ok = LsaLogonUser(hLsaConnection, &lsaOrigin, Batch, authenticationpackageid, pAuthenticationInfo, cbAuthenticationInfo, pTokenGroups, &source, &pProfile, &cbProfile, &logonid, &hToken, &quota, &substatus);
-		WriteDW(ok);
+		wprintf(L"%d\n", ok);
 		error = LsaNtStatusToWinError(ok);
-		WriteDW(error);
+		wprintf(L"%d\n", error);
 
 		// free
 		HeapFree(GetProcessHeap(), 0, pAuthenticationInfoBuffer);
@@ -178,9 +151,7 @@ int main()
 
 	DWORD count = pti->PrivilegeCount;
 
-	Write(L"Privilege count: ");
-	WriteDW(count);
-	WriteLine(L"");
+	wprintf(L"Privilege count: %d\n", count);
 	
 	for (DWORD i = 0; i < count; i++) {
 
@@ -191,7 +162,7 @@ int main()
 		size_t cbName = cchName * sizeof(WCHAR) + sizeof(WCHAR);
 		LPWSTR sName = (LPWSTR)GlobalAlloc(0, cbName);
 		ok = LookupPrivilegeNameW(NULL, &luid, sName, &cchName);
-		WriteLine(sName);
+		wprintf(L"%s\n", sName);
 		GlobalFree(sName);
 
 	}//for
