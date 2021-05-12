@@ -33,8 +33,6 @@ void Error(LPCWSTR szFunctionName)
 	if (debug) {
 		error = GetLastError();
 		if (0 != error) {
-			WCHAR szError[ERRORSIZE];
-			_ultow_s(error, szError, sizeof(szError) / sizeof(WCHAR), 10);
 			wprintf(L"%s error %d\n",szFunctionName,error);
 			error = 0;
 		}//if
@@ -145,8 +143,7 @@ int main()
 	Error(L"LookupAccountSidW1");
 
 	// output the user name
-	Write(L"Process owner name: ");
-	WriteLine(szName);
+	wprintf(L"Process owner name: %s\n", szName);
 
 	// clean up
 	GlobalFree(szDomainName);
