@@ -109,7 +109,8 @@ int main()
 	TranslateUserNameToSid(szUserName);
 
 	DWORD rights = AccountRights(pSid);
-	wprintf(L"%d\n",rights);
+	//wprintf(L"%d\n",rights);
+	fwprintf(stderr, L"%d\n", rights);
 	if (args < 3) { return 0; }
 
 	LPWSTR szPrivilege = aCommandLine[2];
