@@ -48,22 +48,6 @@ void error(LPCWSTR sz)
 	ok = TRUE;
 }
 
-void EnablePrivilege(LPWSTR sPrivilegeName)
-{
-	HANDLE hCurrentProcessToken;
-	OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hCurrentProcessToken);
-	TOKEN_PRIVILEGES privs;
-	LUID luid;
-	ok = LookupPrivilegeValue(NULL, sPrivilegeName, &luid);
-	error(L"LookupPrivilegeValue");
-	privs.PrivilegeCount = 1;
-	privs.Privileges[0].Luid = luid;
-	privs.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-	ok = AdjustTokenPrivileges(hCurrentProcessToken, FALSE, &privs, sizeof(TOKEN_PRIVILEGES), NULL, NULL);
-	error(L"AdjustTokenPrivileges");
-}
-
-
 int main()
 {
 
