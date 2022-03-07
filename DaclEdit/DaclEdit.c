@@ -8,11 +8,13 @@
 LSTATUS status = 0;
 BOOL ok = FALSE;
 LPWSTR pathObject = L""; // a registry path
-LPWSTR sddl = L""; // an sddl for a dacl coming from user and/or registry
+LPWSTR sddl = L""; // an sddl for a dacl
 int size = 0; // a size for various purposes
 PSECURITY_DESCRIPTOR psd = NULL; // a pointer to a security descriptor
 PACL pdacl = NULL; // a pointer to a DACL
 BOOL debug = TRUE;
+HANDLE handle = NULL; // in case a handle is needed for something
+DWORD pid = 0; // in case a pid is needed
 
 void help()
 {
@@ -30,7 +32,7 @@ void help()
 	wprintf(L"%s\n", L"10\tSE_PROVIDER_DEFINED_OBJECT");
 	wprintf(L"%s\n", L"11\tSE_WMIGUID_OBJECT");
 	wprintf(L"%s\n", L"12\tSE_REGISTRY_WOW64_32KEY");
-	wprintf(L"%s\n", L"13\tSE_REGISTRY_WOW64_64KEY");
+	wprintf(L"%s\n", L"13\tSE_REGISTRY_WOW64_64KEY\n");
 }
 
 void error(LPCWSTR sz)
@@ -45,6 +47,22 @@ void error(LPCWSTR sz)
 	status = 0;
 	ok = TRUE;
 }
+
+void EnablePrivilege(LPWSTR sPrivilegeName)
+{
+	HANDLE hCurrentProcessToken;
+	OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hCurrentProcessToken);
+	TOKEN_PRIVILEGES privs;
+	LUID luid;
+	ok = LookupPrivilegeValue(NULL, sPrivilegeName, &luid);
+	error(L"LookupPrivilegeValue");
+	privs.PrivilegeCount = 1;
+	privs.Privileges[0].Luid = luid;
+	privs.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+	ok = AdjustTokenPrivileges(hCurrentProcessToken, FALSE, &privs, sizeof(TOKEN_PRIVILEGES), NULL, NULL);
+	error(L"AdjustTokenPrivileges");
+}
+
 
 int main()
 {
@@ -61,7 +79,7 @@ int main()
 	int objecttype = 0;
 	LPWSTR sObjectType = aCommandLine[1];
 	objecttype = (int)_wtoi(sObjectType);
-	error(L"_wtoi");
+	//error(L"_wtoi");
 
 	pathObject = aCommandLine[2];
 
@@ -90,7 +108,6 @@ int main()
 
 	status = GetNamedSecurityInfo(pathObject, objecttype, DACL_SECURITY_INFORMATION, NULL, NULL, NULL, NULL, &psd);
 	error(L"GetNamedSecurityInfo");
-
 	sddl = (LPWSTR)GlobalAlloc(0, SDDLLENGTH);
 	ok = ConvertSecurityDescriptorToStringSecurityDescriptor(psd, SDDL_REVISION_1, DACL_SECURITY_INFORMATION, &sddl, &size);
 	error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
