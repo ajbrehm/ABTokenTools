@@ -12,7 +12,7 @@ LPWSTR sddl = (LPWSTR)L""; // an sddl for a dacl
 unsigned long size = 0; // a size for various purposes
 PSECURITY_DESCRIPTOR psd = NULL; // a pointer to a security descriptor
 PACL pdacl = NULL; // a pointer to a DACL
-BOOL debug = TRUE;
+BOOL debug = FALSE;
 HANDLE handle = NULL; // in case a handle is needed for something
 DWORD pid = 0; // in case a pid is needed
 
@@ -70,14 +70,14 @@ int main()
 	if (4 == args) {
 
 		sddl = aCommandLine[3];
-		if (debug) { wprintf(L"SDDL given:\t%s\n", sddl); }
+		if (debug) { fwprintf(stderr, L"SDDL given:\t%s\n", sddl); }
 		ok = ConvertStringSecurityDescriptorToSecurityDescriptor(sddl, SDDL_REVISION_1, &psd, &size);
 		error(L"ConvertStringSecurityDescriptorToSecurityDescriptor");
 
 		sddl = (LPWSTR)GlobalAlloc(0, SDDLLENGTH);
 		ok = ConvertSecurityDescriptorToStringSecurityDescriptor(psd, SDDL_REVISION_1, DACL_SECURITY_INFORMATION, &sddl, &size);
 		error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
-		if (debug) { wprintf(L"SDDL from security descriptor:\t%s\n", sddl); }
+		if (debug) { fwprintf(stderr, L"SDDL from security descriptor:\t%s\n", sddl); }
 
 		BOOL tfDaclpresent = FALSE;
 		BOOL tfDaclDefaulted = FALSE;
