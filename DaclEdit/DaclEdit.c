@@ -7,9 +7,9 @@
 
 LSTATUS status = 0;
 BOOL ok = FALSE;
-LPWSTR pathObject = L""; // a registry path
-LPWSTR sddl = L""; // an sddl for a dacl
-int size = 0; // a size for various purposes
+LPWSTR pathObject = (LPWSTR)L""; // a registry path
+LPWSTR sddl = (LPWSTR)L""; // an sddl for a dacl
+unsigned long size = 0; // a size for various purposes
 PSECURITY_DESCRIPTOR psd = NULL; // a pointer to a security descriptor
 PACL pdacl = NULL; // a pointer to a DACL
 BOOL debug = TRUE;
@@ -84,13 +84,13 @@ int main()
 		status = GetSecurityDescriptorDacl(psd, &tfDaclpresent, &pdacl, &tfDaclDefaulted);
 		error(L"GetSecurityDescriptorDacl");
 
-		status = SetNamedSecurityInfo(pathObject, objecttype, DACL_SECURITY_INFORMATION, NULL, NULL, pdacl, NULL);
+		status = SetNamedSecurityInfo(pathObject, (SE_OBJECT_TYPE)objecttype, DACL_SECURITY_INFORMATION, NULL, NULL, pdacl, NULL);
 		error(L"SetNamedSecurityInfo");
 
 
 	}//if
 
-	status = GetNamedSecurityInfo(pathObject, objecttype, DACL_SECURITY_INFORMATION, NULL, NULL, NULL, NULL, &psd);
+	status = GetNamedSecurityInfo(pathObject, (SE_OBJECT_TYPE)objecttype, DACL_SECURITY_INFORMATION, NULL, NULL, NULL, NULL, &psd);
 	error(L"GetNamedSecurityInfo");
 	sddl = (LPWSTR)GlobalAlloc(0, SDDLLENGTH);
 	ok = ConvertSecurityDescriptorToStringSecurityDescriptor(psd, SDDL_REVISION_1, DACL_SECURITY_INFORMATION, &sddl, &size);
