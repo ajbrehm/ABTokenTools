@@ -15,6 +15,7 @@ PACL pdacl = NULL; // a pointer to a DACL
 BOOL debug = FALSE;
 HANDLE handle = NULL; // in case a handle is needed for something
 DWORD pid = 0; // in case a pid is needed
+DWORD result = 0; // store return code
 
 void help()
 {
@@ -85,6 +86,7 @@ int main()
 		error(L"GetSecurityDescriptorDacl");
 
 		status = SetNamedSecurityInfo(pathObject, (SE_OBJECT_TYPE)objecttype, DACL_SECURITY_INFORMATION, NULL, NULL, pdacl, NULL);
+		result = status;
 		error(L"SetNamedSecurityInfo");
 
 
@@ -97,7 +99,7 @@ int main()
 	error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
 	wprintf(L"%s\n", sddl);
 
-
+	return result;
 
 
 
