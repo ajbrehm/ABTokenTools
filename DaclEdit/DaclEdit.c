@@ -84,32 +84,7 @@ int main()
 
 	SECURITY_INFORMATION DACL_OWNER = DACL_SECURITY_INFORMATION | OWNER_SECURITY_INFORMATION;
 
-	if (5 == args) {
-
-		EnablePrivilege(L"SeTakeOwnershipPrivilege");
-
-		sddl = aCommandLine[4];
-		if (debug) { fwprintf(stderr, L"SDDL given:\t%s\n", sddl); }
-		ok = ConvertStringSecurityDescriptorToSecurityDescriptor(sddl, SDDL_REVISION_1, &psd, NULL);
-		error(L"ConvertStringSecurityDescriptorToSecurityDescriptor");
-
-		ok = ConvertSecurityDescriptorToStringSecurityDescriptor(psd, SDDL_REVISION_1, OWNER_SECURITY_INFORMATION, &sddl, NULL);
-		error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
-		if (debug) { fwprintf(stderr, L"SDDL for owner of new security descriptor:\t%s\n", sddl); }
-
-		BOOL tfOwnerDefaulted = FALSE;
-		status = GetSecurityDescriptorOwner(psd, &owner, &tfOwnerDefaulted);
-		error(L"GetSecurityDescriptorOwner");
-
-		status = SetNamedSecurityInfo(pathObject, (SE_OBJECT_TYPE)objecttype, OWNER_SECURITY_INFORMATION, owner, NULL, NULL, NULL);
-		result = status;
-		error(L"SetNamedSecurityInfo");
-
-		
-
-	}//if
-
-	if (args >= 4) {
+	if (4 == args) {
 
 		sddl = aCommandLine[3];
 		if (debug) { fwprintf(stderr, L"SDDL given:\t%s\n", sddl); }
@@ -118,16 +93,30 @@ int main()
 
 		ok = ConvertSecurityDescriptorToStringSecurityDescriptor(psd, SDDL_REVISION_1, DACL_SECURITY_INFORMATION, &sddl, NULL);
 		error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
-		if (debug) { fwprintf(stderr, L"SDDL for DACL of new security descriptor:\t%s\n", sddl); }
+		if (debug) { fwprintf(stderr, L"SDDL for new security descriptor:\t%s\n", sddl); }
+
+		BOOL tfOwnerDefaulted = FALSE;
+		status = GetSecurityDescriptorOwner(psd, &owner, &tfOwnerDefaulted);
+		error(L"GetSecurityDescriptorOwner");
+
+		if (NULL != owner) {
+			EnablePrivilege(L"SeTakeOwnershipPrivilege");
+			status = SetNamedSecurityInfo(pathObject, (SE_OBJECT_TYPE)objecttype, OWNER_SECURITY_INFORMATION, owner, NULL, NULL, NULL);
+			result = status;
+			error(L"SetNamedSecurityInfo");
+		}//if
+
 
 		BOOL tfDaclpresent = FALSE;
 		BOOL tfDaclDefaulted = FALSE;
 		status = GetSecurityDescriptorDacl(psd, &tfDaclpresent, &pdacl, &tfDaclDefaulted);
 		error(L"GetSecurityDescriptorDacl");
-		
-		status = SetNamedSecurityInfo(pathObject, (SE_OBJECT_TYPE)objecttype, DACL_SECURITY_INFORMATION, NULL, NULL, pdacl, NULL);
-		result = status;
-		error(L"SetNamedSecurityInfo");
+
+		if (NULL != pdacl) {
+			status = SetNamedSecurityInfo(pathObject, (SE_OBJECT_TYPE)objecttype, DACL_SECURITY_INFORMATION, NULL, NULL, pdacl, NULL);
+			result = status;
+			error(L"SetNamedSecurityInfo");
+		}//if
 
 		LocalFree(psd);
 
