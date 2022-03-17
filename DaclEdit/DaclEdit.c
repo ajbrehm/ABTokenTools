@@ -33,6 +33,7 @@ void help()
 	wprintf(L"%s\n", L"11\tSE_WMIGUID_OBJECT");
 	wprintf(L"%s\n", L"12\tSE_REGISTRY_WOW64_32KEY");
 	wprintf(L"%s\n", L"13\tSE_REGISTRY_WOW64_64KEY\n");
+	wprintf(L"Currently supports setting DACLs and owners. Setting an owner might require the appropriate privilege.\n");
 }
 
 void error(LPCWSTR sz)
