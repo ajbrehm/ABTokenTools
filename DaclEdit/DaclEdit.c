@@ -107,6 +107,7 @@ int main()
 
 		if (NULL != owner) {
 			EnablePrivilege(L"SeRestorePrivilege");
+			EnablePrivilege(L"SeTakeOwnershipPrivilege");
 			status = SetNamedSecurityInfo(pathObject, (SE_OBJECT_TYPE)objecttype, OWNER_SECURITY_INFORMATION, owner, NULL, NULL, NULL);
 			result = status;
 			error(L"SetNamedSecurityInfo");
