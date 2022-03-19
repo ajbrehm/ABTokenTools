@@ -25,7 +25,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CopyAsBackup", "CopyAsBacku
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RegACL", "RegACL\RegACL.vcxproj", "{06BF9401-9CE8-4430-A804-D96B8A7B4BF8}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DaclEdit", "DaclEdit\DaclEdit.vcxproj", "{C107ABA1-D2C6-4A0C-9E13-02C9E595AC42}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AclEdit", "AclEdit\DaclEdit.vcxproj", "{C107ABA1-D2C6-4A0C-9E13-02C9E595AC42}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
