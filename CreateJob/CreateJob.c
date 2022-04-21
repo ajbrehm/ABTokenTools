@@ -63,4 +63,9 @@ int main()
 	CloseHandle(hProcess);
 	CloseHandle(hJob);
 
+	if (debug) {
+		LPWSTR sInput = GlobalAlloc(0, 0);
+		wscanf_s(&sInput);
+	}//if
+
 }
