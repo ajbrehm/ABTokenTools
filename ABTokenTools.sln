@@ -27,7 +27,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RegACL", "RegACL\RegACL.vcx
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AclEdit", "AclEdit\AclEdit.vcxproj", "{C107ABA1-D2C6-4A0C-9E13-02C9E595AC42}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CreateJob", "CreateJob\CreateJob.vcxproj", "{9A71C69D-9925-4430-8DE3-B8CE99F8C908}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RunAsJob", "RunAsJob\RunAsJob.vcxproj", "{9A71C69D-9925-4430-8DE3-B8CE99F8C908}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
