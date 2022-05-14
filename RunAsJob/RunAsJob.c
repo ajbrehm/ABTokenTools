@@ -1,7 +1,7 @@
 #include <Windows.h>
 #include <wchar.h>
 
-BOOL debug = TRUE;
+BOOL debug = FALSE;
 BOOL ok = TRUE;
 LSTATUS status = 0;
 
@@ -46,10 +46,10 @@ int main()
 	LPWSTR pathImage = L"";
 	DWORD processlimit = 0;
 	for (int i = 1; i < args; i=i+2) {
-		if (CSTR_EQUAL == CompareStringEx(NULL, 0, aCmdLine[i], -1, L"/IMAGE", 6, NULL, NULL, NULL)) {
+		if (CSTR_EQUAL == CompareStringEx(NULL, 0, aCmdLine[i], -1, L"/image", 6, NULL, NULL, NULL)) {
 			pathImage = aCmdLine[i + 1];
 		}//if
-		if (CSTR_EQUAL == CompareStringEx(NULL, 0, aCmdLine[i], -1, L"/PROCESSLIMIT", 13, NULL, NULL, NULL)) {
+		if (CSTR_EQUAL == CompareStringEx(NULL, 0, aCmdLine[i], -1, L"/processlimit", 13, NULL, NULL, NULL)) {
 			processlimit = _wtoi(aCmdLine[i + 1]);
 		}//if
 	}//for
@@ -75,7 +75,9 @@ int main()
 	// get pid
 	DWORD pid = pi.dwProcessId;
 
-	// 
+	// get the process
+	HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
+	error(L"OpenProcess");
 
 	// create a job object for the process
 	HANDLE hJob = CreateJobObjectW(NULL, L"RunAsJob");
@@ -86,10 +88,12 @@ int main()
 	error(L"SetInformationJobObject");
 
 	// add process to job
-	ok = AssignProcessToJobObject(hJob, pi.hProcess);
+	ok = AssignProcessToJobObject(hJob, hProcess);
 	error(L"AssignProcessToJobObject");
 
 	// clean up
+	CloseHandle(hProcess);
+	CloseHandle(hJob);
 
 	if (debug) {
 		LPWSTR sInput = GlobalAlloc(0, 0);
