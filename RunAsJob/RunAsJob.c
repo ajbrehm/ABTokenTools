@@ -69,9 +69,13 @@ int main()
 	dwCreationFlags += CREATE_NEW_CONSOLE + CREATE_BREAKAWAY_FROM_JOB;
 	ok = CreateProcess(pathImage, NULL, NULL, NULL, FALSE, dwCreationFlags, NULL, NULL, &si, &pi);
 	error(L"CreateProcess");
+	CloseHandle(pi.hProcess);
+	CloseHandle(pi.hThread);
 
 	// get pid
-	
+	DWORD pid = pi.dwProcessId;
+
+	// 
 
 	// create a job object for the process
 	HANDLE hJob = CreateJobObjectW(NULL, L"RunAsJob");
@@ -86,8 +90,6 @@ int main()
 	error(L"AssignProcessToJobObject");
 
 	// clean up
-	CloseHandle(pi.hProcess);
-	CloseHandle(pi.hThread);
 
 	if (debug) {
 		LPWSTR sInput = GlobalAlloc(0, 0);
