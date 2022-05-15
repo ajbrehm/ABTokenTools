@@ -20,7 +20,7 @@ void error(LPCWSTR sz)
 
 void help()
 {
-	LPWSTR sHelp = L"Usage: CreateJob [/pid pid] [/image pathImage] [/processlimit processlimit] [/args ...]\n";
+	LPWSTR sHelp = L"Usage: RunAsJob [/pid pid] [/image pathImage] [/processlimit processlimit] [/args ...]\n";
 	wprintf(sHelp);
 	exit(0);
 }
@@ -49,17 +49,17 @@ int main()
 	DWORD processlimit = 0;
 	DWORD argsstart = 0;
 	for (int i = 1; i < args; i=i+2) {
-		if (CSTR_EQUAL == CompareStringEx(NULL, 0, aCmdLine[i], -1, L"/pid", 4, NULL, NULL, NULL)) {
+		if (CSTR_EQUAL == CompareStringEx(NULL, 0, aCmdLine[i], -1, L"/pid", 4, NULL, NULL, 0)) {
 			if (i + 1 == args) { help(); }
 			pid = _wtoi(aCmdLine[i + 1]);
 			tfPid = TRUE;
 		}//if
-		if (CSTR_EQUAL == CompareStringEx(NULL, 0, aCmdLine[i], -1, L"/image", 6, NULL, NULL, NULL)) {
+		if (CSTR_EQUAL == CompareStringEx(NULL, 0, aCmdLine[i], -1, L"/image", 6, NULL, NULL, 0)) {
 			if (i + 1 == args) { help(); }
 			pathImage = aCmdLine[i + 1];
 			tfImage = TRUE;
 		}//if
-		if (CSTR_EQUAL == CompareStringEx(NULL, 0, aCmdLine[i], -1, L"/processlimit", 13, NULL, NULL, NULL)) {
+		if (CSTR_EQUAL == CompareStringEx(NULL, 0, aCmdLine[i], -1, L"/processlimit", 13, NULL, NULL, 0)) {
 			if (i + 1 == args) { help(); }
 			processlimit = _wtoi(aCmdLine[i + 1]);
 		}//if
@@ -74,7 +74,7 @@ int main()
 	// find args for client program
 	LPWSTR sNewCmdLine = wcsstr(sCmdLine, L"/args");
 	if (NULL == sNewCmdLine) { sNewCmdLine = L""; }
-	DWORD length = wcslen(L"/args");
+	size_t length = wcslen(L"/args");
 	sNewCmdLine += length + 1;
 
 	// start process
