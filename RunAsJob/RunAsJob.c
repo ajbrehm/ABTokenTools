@@ -20,7 +20,7 @@ void error(LPCWSTR sz)
 
 void help()
 {
-	LPWSTR sHelp = L"Usage: CreateJob [/pid pid] [/image pathImage] [/processlimit processlimit] [/args ...]\n";
+	LPWSTR sHelp = L"Usage: CreateJob [/pid pid] [/processlimit processlimit] [/image pathImage] [/args ...]\n";
 	wprintf(sHelp);
 	exit(0);
 }
@@ -63,17 +63,20 @@ int main()
 			if (i + 1 == args) { help(); }
 			processlimit = _wtoi(aCmdLine[i + 1]);
 		}//if
-		if (CSTR_EQUAL == CompareStringEx(NULL, 0, aCmdLine[i], -1, L"/args", 5, NULL, NULL, NULL)) {
-			if (i + 1 == args) { help(); }
-			argsstart = i + 1;
-		}//if
 	}//for
 
+	// check for missing image or pid
 	if ((tfPid && tfImage) || (!tfPid && !tfImage)) {
 		wprintf(L"pathImage or pid are mandatory.\n");
 		return 0;
 	}//if
-	
+
+	// find args for client program
+	LPWSTR sNewCmdLine = wcsstr(sCmdLine, L"/args");
+	if (NULL == sNewCmdLine) { sNewCmdLine = L""; }
+	DWORD length = wcslen(L"/args");
+	sNewCmdLine += length + 1;
+
 	// start process
 	if (tfImage) {
 		STARTUPINFO si;
@@ -83,7 +86,7 @@ int main()
 		ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
 		DWORD dwCreationFlags = 0;
 		dwCreationFlags += CREATE_NEW_CONSOLE + CREATE_BREAKAWAY_FROM_JOB;
-		ok = CreateProcess(pathImage, NULL, NULL, NULL, FALSE, dwCreationFlags, NULL, NULL, &si, &pi);
+		ok = CreateProcess(pathImage, sNewCmdLine, NULL, NULL, FALSE, dwCreationFlags, NULL, NULL, &si, &pi);
 		error(L"CreateProcess");
 		pid = pi.dwProcessId;
 		CloseHandle(pi.hProcess);
