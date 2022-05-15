@@ -20,7 +20,7 @@ void error(LPCWSTR sz)
 
 void help()
 {
-	LPWSTR sHelp = L"Usage: CreateJob [/pid pid] [/processlimit processlimit] [/image pathImage] [/args ...]\n";
+	LPWSTR sHelp = L"Usage: CreateJob [/pid pid] [/image pathImage] [/processlimit processlimit] [/args ...]\n";
 	wprintf(sHelp);
 	exit(0);
 }
