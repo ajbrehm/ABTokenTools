@@ -6,8 +6,7 @@
 LSTATUS status = 0;
 BOOL ok = FALSE;
 LPWSTR pathObject = (LPWSTR)L""; // a registry path
-LPWSTR sddl = (LPWSTR)L""; // an sddl for a dacl
-unsigned long size = 0; // a size for various purposes
+LPWSTR sddl; // an sddl for a dacl
 PSECURITY_DESCRIPTOR psd = NULL; // a pointer to a security descriptor
 PACL pdacl = NULL; // a pointer to a DACL
 PSID owner = NULL; // a pointer to an owner
@@ -83,7 +82,7 @@ int main()
 
 	pathObject = aCommandLine[2];
 
-	SECURITY_INFORMATION DACL_OWNER = DACL_SECURITY_INFORMATION | OWNER_SECURITY_INFORMATION;
+	SECURITY_INFORMATION DACL_AND_OWNER_SECURITY_INFORMATION = DACL_SECURITY_INFORMATION | OWNER_SECURITY_INFORMATION;
 
 	if (4 == args) {
 
@@ -92,14 +91,16 @@ int main()
 		ok = ConvertStringSecurityDescriptorToSecurityDescriptor(sddl, SDDL_REVISION_1, &psd, NULL);
 		error(L"ConvertStringSecurityDescriptorToSecurityDescriptor");
 
-		ok = ConvertSecurityDescriptorToStringSecurityDescriptor(psd, SDDL_REVISION_1, DACL_SECURITY_INFORMATION, &sddl, NULL);
-		error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
-		if (debug) { fwprintf(stderr, L"SDDL for new security descriptor (DACL):\t%s\n", sddl); }
-
-		ok = ConvertSecurityDescriptorToStringSecurityDescriptor(psd, SDDL_REVISION_1, OWNER_SECURITY_INFORMATION, &sddl, NULL);
-		error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
-		if (debug) { fwprintf(stderr, L"SDDL for new security descriptor (Owner):\t%s\n", sddl); }
-
+		if (debug) {
+			ok = ConvertSecurityDescriptorToStringSecurityDescriptor(psd, SDDL_REVISION_1, DACL_SECURITY_INFORMATION, &sddl, NULL);
+			error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
+			fwprintf(stderr, L"SDDL for new security descriptor (DACL):\t%s\n", sddl);
+			LocalFree(sddl);
+			ok = ConvertSecurityDescriptorToStringSecurityDescriptor(psd, SDDL_REVISION_1, OWNER_SECURITY_INFORMATION, &sddl, NULL);
+			error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
+			fwprintf(stderr, L"SDDL for new security descriptor (Owner):\t%s\n", sddl);
+			LocalFree(sddl);
+		}//if
 
 		BOOL tfOwnerDefaulted = FALSE;
 		status = GetSecurityDescriptorOwner(psd, &owner, &tfOwnerDefaulted);
@@ -113,7 +114,6 @@ int main()
 			error(L"SetNamedSecurityInfo");
 		}//if
 
-
 		BOOL tfDaclpresent = FALSE;
 		BOOL tfDaclDefaulted = FALSE;
 		status = GetSecurityDescriptorDacl(psd, &tfDaclpresent, &pdacl, &tfDaclDefaulted);
@@ -125,19 +125,14 @@ int main()
 			error(L"SetNamedSecurityInfo");
 		}//if
 
-		LocalFree(psd);
-
 	}//if
 
-	status = GetNamedSecurityInfo(pathObject, (SE_OBJECT_TYPE)objecttype, DACL_OWNER , NULL, NULL, NULL, NULL, &psd);
+	status = GetNamedSecurityInfo(pathObject, (SE_OBJECT_TYPE)objecttype, DACL_AND_OWNER_SECURITY_INFORMATION , NULL, NULL, NULL, NULL, &psd);
 	error(L"GetNamedSecurityInfo");
-	ok = ConvertSecurityDescriptorToStringSecurityDescriptor(psd, SDDL_REVISION_1, DACL_OWNER, &sddl, &size);
+	ok = ConvertSecurityDescriptorToStringSecurityDescriptor(psd, SDDL_REVISION_1, DACL_AND_OWNER_SECURITY_INFORMATION, &sddl, NULL);
 	error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
 	wprintf(L"%s\n", sddl);
-
-	LocalFree(psd);
 	LocalFree(sddl);
-	LocalFree(owner);
 
 	return result;
 
