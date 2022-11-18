@@ -84,7 +84,8 @@ int main()
 
 	pathObject = aCommandLine[2];
 
-	SECURITY_INFORMATION securityinfo = DACL_SECURITY_INFORMATION | OWNER_SECURITY_INFORMATION;
+	SECURITY_INFORMATION DACL_AND_OWNER_SECURITY_INFORMATION = DACL_SECURITY_INFORMATION | OWNER_SECURITY_INFORMATION;
+	SECURITY_INFORMATION DACL_SECURITY_INFORMATION_AND_THEN_SOME = DACL_SECURITY_INFORMATION;
 
 	if (args >= 4) {
 
@@ -93,10 +94,10 @@ int main()
 			LPWSTR sInheritance = aCommandLine[4];
 			if (0 == wcscmp(L"D", sInheritance)) {
 				if (debug) {fwprintf(stderr, L"Disabling inheritance.\n");}
-				securityinfo = DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION;
+				DACL_SECURITY_INFORMATION_AND_THEN_SOME = DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION;
 			}//if
 			if (0 == wcscmp(L"E", sInheritance)) {
-				securityinfo = DACL_SECURITY_INFORMATION | UNPROTECTED_DACL_SECURITY_INFORMATION;
+				DACL_SECURITY_INFORMATION_AND_THEN_SOME = DACL_SECURITY_INFORMATION | UNPROTECTED_DACL_SECURITY_INFORMATION;
 				if (debug) { fwprintf(stderr, L"Enabling inheritance.\n"); }
 			}//if
 
@@ -138,16 +139,16 @@ int main()
 		error(L"GetSecurityDescriptorDacl");
 
 		if (NULL != pdacl) {
-			status = SetNamedSecurityInfo(pathObject, (SE_OBJECT_TYPE)objecttype, securityinfo, NULL, NULL, pdacl, NULL);
+			status = SetNamedSecurityInfo(pathObject, (SE_OBJECT_TYPE)objecttype, DACL_SECURITY_INFORMATION_AND_THEN_SOME, NULL, NULL, pdacl, NULL);
 			result = status;
 			error(L"SetNamedSecurityInfo");
 		}//if
 
 	}//if
 	
-	status = GetNamedSecurityInfo(pathObject, (SE_OBJECT_TYPE)objecttype, securityinfo , NULL, NULL, NULL, NULL, &psd);
+	status = GetNamedSecurityInfo(pathObject, (SE_OBJECT_TYPE)objecttype, DACL_AND_OWNER_SECURITY_INFORMATION , NULL, NULL, NULL, NULL, &psd);
 	error(L"GetNamedSecurityInfo");
-	ok = ConvertSecurityDescriptorToStringSecurityDescriptor(psd, SDDL_REVISION_1, securityinfo, &sddl, NULL);
+	ok = ConvertSecurityDescriptorToStringSecurityDescriptor(psd, SDDL_REVISION_1, DACL_AND_OWNER_SECURITY_INFORMATION, &sddl, NULL);
 	error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
 	wprintf(L"%s\n", sddl);
 	LocalFree(sddl);
