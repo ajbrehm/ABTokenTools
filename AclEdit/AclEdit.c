@@ -17,7 +17,7 @@ DWORD result = 0; // store return code
 
 void help()
 {
-	wprintf(L"AclEdit type pathObject [sddl]\n\n");
+	wprintf(L"AclEdit type pathObject [sddl] [D|E]\n\n");
 	wprintf(L"%s\n", L"0\tSE_UNKNOWN_OBJECT_TYPE");
 	wprintf(L"%s\n", L"1\tSE_FILE_OBJECT");
 	wprintf(L"%s\n", L"2\tSE_SERVICE");
@@ -33,6 +33,8 @@ void help()
 	wprintf(L"%s\n", L"12\tSE_REGISTRY_WOW64_32KEY");
 	wprintf(L"%s\n", L"13\tSE_REGISTRY_WOW64_64KEY\n");
 	wprintf(L"Currently supports setting DACLs and owners. Setting an owner might require the appropriate privilege.\n");
+	wprintf(L"Disable or enable inheritance with AclEdit type pathObject sddl D|E.\n");
+	wprintf(L"Version 0.1\n");
 }
 
 void error(LPCWSTR sz)
@@ -83,22 +85,38 @@ int main()
 	pathObject = aCommandLine[2];
 
 	SECURITY_INFORMATION DACL_AND_OWNER_SECURITY_INFORMATION = DACL_SECURITY_INFORMATION | OWNER_SECURITY_INFORMATION;
+	SECURITY_INFORMATION DACL_SECURITY_INFORMATION_AND_THEN_SOME = DACL_SECURITY_INFORMATION;
 
-	if (4 == args) {
+	if (args >= 4) {
+
+		if (5 == args) {
+
+			LPWSTR sInheritance = aCommandLine[4];
+			if (0 == wcscmp(L"D", sInheritance)) {
+				if (debug) {fwprintf(stderr, L"Disabling inheritance.\n");}
+				DACL_SECURITY_INFORMATION_AND_THEN_SOME = DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION;
+			}//if
+			if (0 == wcscmp(L"E", sInheritance)) {
+				DACL_SECURITY_INFORMATION_AND_THEN_SOME = DACL_SECURITY_INFORMATION | UNPROTECTED_DACL_SECURITY_INFORMATION;
+				if (debug) { fwprintf(stderr, L"Enabling inheritance.\n"); }
+			}//if
+
+		}//if
 
 		sddl = aCommandLine[3];
 		if (debug) { fwprintf(stderr, L"SDDL given:\t%s\n", sddl); }
+
 		ok = ConvertStringSecurityDescriptorToSecurityDescriptor(sddl, SDDL_REVISION_1, &psd, NULL);
 		error(L"ConvertStringSecurityDescriptorToSecurityDescriptor");
 
 		if (debug) {
 			ok = ConvertSecurityDescriptorToStringSecurityDescriptor(psd, SDDL_REVISION_1, DACL_SECURITY_INFORMATION, &sddl, NULL);
 			error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
-			fwprintf(stderr, L"SDDL for new security descriptor (DACL):\t%s\n", sddl);
+			fwprintf(stderr, L"SDDL for new security descriptor (DACL): %s\n", sddl);
 			LocalFree(sddl);
 			ok = ConvertSecurityDescriptorToStringSecurityDescriptor(psd, SDDL_REVISION_1, OWNER_SECURITY_INFORMATION, &sddl, NULL);
 			error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
-			fwprintf(stderr, L"SDDL for new security descriptor (Owner):\t%s\n", sddl);
+			fwprintf(stderr, L"SDDL for new security descriptor (Owner): %s\n", sddl);
 			LocalFree(sddl);
 		}//if
 
@@ -114,19 +132,20 @@ int main()
 			error(L"SetNamedSecurityInfo");
 		}//if
 
+
 		BOOL tfDaclpresent = FALSE;
 		BOOL tfDaclDefaulted = FALSE;
 		status = GetSecurityDescriptorDacl(psd, &tfDaclpresent, &pdacl, &tfDaclDefaulted);
 		error(L"GetSecurityDescriptorDacl");
 
 		if (NULL != pdacl) {
-			status = SetNamedSecurityInfo(pathObject, (SE_OBJECT_TYPE)objecttype, DACL_SECURITY_INFORMATION, NULL, NULL, pdacl, NULL);
+			status = SetNamedSecurityInfo(pathObject, (SE_OBJECT_TYPE)objecttype, DACL_SECURITY_INFORMATION_AND_THEN_SOME, NULL, NULL, pdacl, NULL);
 			result = status;
 			error(L"SetNamedSecurityInfo");
 		}//if
 
 	}//if
-
+	
 	status = GetNamedSecurityInfo(pathObject, (SE_OBJECT_TYPE)objecttype, DACL_AND_OWNER_SECURITY_INFORMATION , NULL, NULL, NULL, NULL, &psd);
 	error(L"GetNamedSecurityInfo");
 	ok = ConvertSecurityDescriptorToStringSecurityDescriptor(psd, SDDL_REVISION_1, DACL_AND_OWNER_SECURITY_INFORMATION, &sddl, NULL);
