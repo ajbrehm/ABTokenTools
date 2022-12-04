@@ -34,7 +34,7 @@ void help()
 	wprintf(L"%s\n", L"13\tSE_REGISTRY_WOW64_64KEY\n");
 	wprintf(L"Currently supports setting DACLs and owners. Setting an owner might require the appropriate privilege.\n");
 	wprintf(L"Disable or enable inheritance with AclEdit type pathObject sddl D|E.\n");
-	wprintf(L"File, service, printer, registry, and share objects take UNC paths, DS_OBJECT takes X.500 format.");
+	wprintf(L"File, service, printer, registry, and share objects take UNC paths, DS_OBJECT takes X.500 format.\n\n");
 }
 
 void error(LPCWSTR sz)
