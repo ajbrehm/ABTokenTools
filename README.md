@@ -26,21 +26,21 @@ This also applies to other commands.
 
 Sets a security descriptor in sddl format on an object at pathObject of the type type and optionally enables or disables inheritance.
 
-Types are these:
-0       SE_UNKNOWN_OBJECT_TYPE
-1       SE_FILE_OBJECT
-2       SE_SERVICE
-3       SE_PRINTER
-4       SE_REGISTRY_KEY
-5       SE_LMSHARE
-6       SE_KERNEL_OBJECT
-7       SE_WINDOW_OBJECT
-8       SE_DS_OBJECT
-9       SE_DS_OBJECT_ALL
-10      SE_PROVIDER_DEFINED_OBJECT
-11      SE_WMIGUID_OBJECT
-12      SE_REGISTRY_WOW64_32KEY
-13      SE_REGISTRY_WOW64_64KEY
+Types are these:  
+0       SE_UNKNOWN_OBJECT_TYPE  
+1       SE_FILE_OBJECT  
+2       SE_SERVICE  
+3       SE_PRINTER  
+4       SE_REGISTRY_KEY  
+5       SE_LMSHARE  
+6       SE_KERNEL_OBJECT  
+7       SE_WINDOW_OBJECT  
+8       SE_DS_OBJECT  
+9       SE_DS_OBJECT_ALL  
+10      SE_PROVIDER_DEFINED_OBJECT  
+11      SE_WMIGUID_OBJECT  
+12      SE_REGISTRY_WOW64_32KEY  
+13      SE_REGISTRY_WOW64_64KEY  
 
 Currently supports setting DACLs and owners. Setting an owner might require the appropriate privilege.
 Disable or enable inheritance with AclEdit type pathObject sddl D|E.
@@ -57,13 +57,13 @@ Shows the Security Descriptor of the root of drive C.
 
 Gets or sets the password for a user name and a target in Windows' credential manager. There is no particular reason to use this for anything.
 
-Credential types are:
-1 CRED_TYPE_GENERIC
-2 CRED_TYPE_DOMAIN_PASSWORD
-3 CRED_TYPE_DOMAIN_CERTIFICATE
-4 CRED_TYPE_DOMAIN_VISIBLE_PASSWORD
-5 CRED_TYPE_GENERIC_CERTIFICATE5
-6 CRED_TYPE_DOMAIN_EXTENDED
+Credential types are:  
+1 CRED_TYPE_GENERIC  
+2 CRED_TYPE_DOMAIN_PASSWORD  
+3 CRED_TYPE_DOMAIN_CERTIFICATE  
+4 CRED_TYPE_DOMAIN_VISIBLE_PASSWORD  
+5 CRED_TYPE_GENERIC_CERTIFICATE5  
+6 CRED_TYPE_DOMAIN_EXTENDED  
 
 
 # CopyAsBackup
