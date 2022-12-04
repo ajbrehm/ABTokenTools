@@ -1,11 +1,12 @@
 # AccountRights
 
 _AccountRights principal_
+
 Shows the rights and privileges of a security principal (a user or group).
 
 _AccountRights principal privilege_
+_AccountRights principal right_
 
-AccountRights principal right
 Grants a security principal a right or privilege.
 
 _AccountRights principal privilege REMOVE_
