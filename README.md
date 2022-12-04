@@ -16,8 +16,8 @@ Revokes a right or privilege for a security principal.
 
 This works for all privileges and rights.
 
-Rights are in the format "SeInteractiveLogonRight" and "SeDenyInteractiveLogonRight".
-Privileges are in the format "SeShutdownPrivilege".
+Rights are in the format "SeInteractiveLogonRight" and "SeDenyInteractiveLogonRight".  
+Privileges are in the format "SeShutdownPrivilege".  
 This also applies to other commands.
 
 # AclEdit
@@ -42,11 +42,11 @@ Types are these:
 12      SE_REGISTRY_WOW64_32KEY  
 13      SE_REGISTRY_WOW64_64KEY  
 
-Currently supports setting DACLs and owners. Setting an owner might require the appropriate privilege.
-Disable or enable inheritance with AclEdit type pathObject sddl D|E.
-File, service, printer, registry, and share objects take UNC paths, DS_OBJECT takes X.500 format.
+Currently supports setting DACLs and owners. Setting an owner might require the appropriate privilege.  
+Disable or enable inheritance with AclEdit type pathObject sddl D|E.  
+File, service, printer, registry, and share objects take UNC paths, DS_OBJECT takes X.500 format.  
 
-**AclEdit 1 "C:\"**
+**AclEdit 1 "C:\\"**
 
 Shows the Security Descriptor of the root of drive C.
 
