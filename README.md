@@ -4,12 +4,12 @@
 
 Shows the rights and privileges of a security principal (a user or group).
 
-**AccountRights principal privilege**
+**AccountRights principal privilege**  
 **AccountRights principal right**
 
 Grants a security principal a right or privilege.
 
-**AccountRights principal privilege REMOVE**
+**AccountRights principal privilege REMOVE**  
 **AccountRights principal right REMOVE**
 
 Revokes a right or privilege for a security principal.
