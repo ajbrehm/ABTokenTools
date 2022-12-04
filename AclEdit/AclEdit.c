@@ -5,7 +5,7 @@
 
 LSTATUS status = 0;
 BOOL ok = FALSE;
-LPWSTR pathObject = (LPWSTR)L""; // a registry path
+LPWSTR pathObject = (LPWSTR)L""; // a path to an object
 LPWSTR sddl; // an sddl for a dacl
 PSECURITY_DESCRIPTOR psd = NULL; // a pointer to a security descriptor
 PACL pdacl = NULL; // a pointer to a DACL
@@ -34,6 +34,7 @@ void help()
 	wprintf(L"%s\n", L"13\tSE_REGISTRY_WOW64_64KEY\n");
 	wprintf(L"Currently supports setting DACLs and owners. Setting an owner might require the appropriate privilege.\n");
 	wprintf(L"Disable or enable inheritance with AclEdit type pathObject sddl D|E.\n");
+	wprintf(L"File, service, printer, registry, and share objects take UNC paths, DS_OBJECT takes X.500 format.");
 }
 
 void error(LPCWSTR sz)
