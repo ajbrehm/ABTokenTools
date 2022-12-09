@@ -130,6 +130,7 @@ int main()
 			status = SetNamedSecurityInfo(pathObject, (SE_OBJECT_TYPE)objecttype, OWNER_SECURITY_INFORMATION, owner, NULL, NULL, NULL);
 			result = status;
 			error(L"SetNamedSecurityInfo");
+			LocalFree(psd);
 		}//if
 
 
@@ -152,6 +153,7 @@ int main()
 	error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
 	wprintf(L"%s\n", sddl);
 	LocalFree(sddl);
+	LocalFree(psd);
 
 	return result;
 
