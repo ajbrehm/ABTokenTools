@@ -1,7 +1,8 @@
 #include <Windows.h>
 #include <wchar.h>
+#include <WtsApi32.h>
 
-BOOL debug = FALSE;
+BOOL debug = TRUE;
 BOOL ok = TRUE;
 LSTATUS status = 0;
 
@@ -20,7 +21,7 @@ void error(LPCWSTR sz)
 
 void help()
 {
-	LPWSTR sHelp = L"Usage: RunAsJob [/pid pid] [/image pathImage] [/processlimit processlimit] [/args ...]\n";
+	LPWSTR sHelp = L"Usage: RunAsJob [/pid pid] [/image pathImage] [/processlimit processlimit] [/sessionid sessionid] [/domain sDomain] [/user sUser] [/password sPassword] [/args ...]\n";
 	wprintf(sHelp);
 	exit(0);
 }
@@ -48,6 +49,11 @@ int main()
 	LPWSTR pathImage = L"";
 	DWORD processlimit = 0;
 	DWORD argsstart = 0;
+	ULONG sessionid = 65536;
+	LPWSTR sDomain = L"";
+	LPWSTR sUser = L"";
+	LPWSTR sPassword = L"";
+	DWORD cDomainUserPassword = 0;
 	for (int i = 1; i < args; i=i+2) {
 		if (CSTR_EQUAL == CompareStringEx(NULL, 0, aCmdLine[i], -1, L"/pid", 4, NULL, NULL, 0)) {
 			if (i + 1 == args) { help(); }
@@ -62,6 +68,25 @@ int main()
 		if (CSTR_EQUAL == CompareStringEx(NULL, 0, aCmdLine[i], -1, L"/processlimit", 13, NULL, NULL, 0)) {
 			if (i + 1 == args) { help(); }
 			processlimit = _wtoi(aCmdLine[i + 1]);
+		}//if
+		if (CSTR_EQUAL == CompareStringEx(NULL, 0, aCmdLine[i], -1, L"/sessionid", 10, NULL, NULL, 0)) {
+			if (i + 1 == args) { help(); }
+			sessionid = _wtoi(aCmdLine[i + 1]);
+		}//if
+		if (CSTR_EQUAL == CompareStringEx(NULL, 0, aCmdLine[i], -1, L"/domain", 7, NULL, NULL, 0)) {
+			if (i + 1 == args) { help(); }
+			sDomain = aCmdLine[i + 1];
+			cDomainUserPassword++;
+		}//if
+		if (CSTR_EQUAL == CompareStringEx(NULL, 0, aCmdLine[i], -1, L"/user", 5, NULL, NULL, 0)) {
+			if (i + 1 == args) { help(); }
+			sUser = aCmdLine[i + 1];
+			cDomainUserPassword++;
+		}//if
+		if (CSTR_EQUAL == CompareStringEx(NULL, 0, aCmdLine[i], -1, L"/password", 9, NULL, NULL, 0)) {
+			if (i + 1 == args) { help(); }
+			sPassword = aCmdLine[i + 1];
+			cDomainUserPassword++;
 		}//if
 	}//for
 
@@ -79,15 +104,31 @@ int main()
 
 	// start process
 	if (tfImage) {
+
 		STARTUPINFO si;
 		PROCESS_INFORMATION pi;
 		si.cb = sizeof(STARTUPINFO);
 		ZeroMemory(&si, si.cb);
 		ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
 		DWORD dwCreationFlags = 0;
-		dwCreationFlags += CREATE_NEW_CONSOLE + CREATE_BREAKAWAY_FROM_JOB;
-		ok = CreateProcess(pathImage, sNewCmdLine, NULL, NULL, FALSE, dwCreationFlags, NULL, NULL, &si, &pi);
-		error(L"CreateProcess");
+		//dwCreationFlags += CREATE_NEW_CONSOLE + CREATE_BREAKAWAY_FROM_JOB;
+		dwCreationFlags += CREATE_NEW_CONSOLE;
+
+		if (sessionid != 65536) {
+			HANDLE hToken;
+			ok = WTSQueryUserToken(sessionid, &hToken);
+			error(L"WTSQueryUserToken");
+			CreateProcessAsUserW(hToken, pathImage, sNewCmdLine, NULL, NULL, FALSE, dwCreationFlags, NULL, NULL, &si, &pi);
+			error(L"CreateProcessAsUserW");
+		} else {
+			if (3 == cDomainUserPassword) {
+				ok = CreateProcessWithLogonW(sUser, sDomain, sPassword, 0, pathImage, sNewCmdLine, dwCreationFlags, NULL, NULL, &si, &pi);
+				error(L"CreateProcessWithLogonW");
+			} else {
+				ok = CreateProcessW(pathImage, sNewCmdLine, NULL, NULL, FALSE, dwCreationFlags, NULL, NULL, &si, &pi);
+				error(L"CreateProcessW");
+			}//if
+		}//if
 		pid = pi.dwProcessId;
 		CloseHandle(pi.hProcess);
 		CloseHandle(pi.hThread);
