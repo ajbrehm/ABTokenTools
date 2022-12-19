@@ -21,7 +21,7 @@ void error(LPCWSTR sz)
 
 void help()
 {
-	LPWSTR sHelp = L"Usage: ABRun [/pid pid] [/image pathImage] [/processlimit processlimit] [/sessionid sessionid] [/domain sDomain] [/user sUser] [/password sPassword] [/args ...]\n";
+	LPWSTR sHelp = L"Usage: RunJob [/pid pid] [/image pathImage] [/processlimit processlimit] [/sessionid sessionid] [/domain sDomain] [/user sUser] [/password sPassword] [/args ...]\n";
 	wprintf(sHelp);
 	exit(0);
 }
@@ -139,7 +139,7 @@ int main()
 	error(L"OpenProcess");
 
 	// create a job object for the process
-	HANDLE hJob = CreateJobObjectW(NULL, L"ABJob");
+	HANDLE hJob = CreateJobObjectW(NULL, L"RunJob");
 	JOBOBJECT_BASIC_LIMIT_INFORMATION basiclimit;
 	basiclimit.LimitFlags = JOB_OBJECT_LIMIT_ACTIVE_PROCESS;
 	basiclimit.ActiveProcessLimit = processlimit;
