@@ -108,13 +108,17 @@ Gets the SID (security identifier) for a security principal.
 This does the same as LookupAccountName but vice versa, gets the user name for a SID.
 
 
-# RunAsJob
+# RunJob
 
-**RunAsJob [/pid pid] [/image pathImage] [/processlimit processlimit] [/args ...]**
+**RunJob [/pid pid] [/image pathImage] [/processlimit processlimit] [/sessionid sessionid] [/domain sDomain] [/user sUser] [/password sPassword] [/args ...]**
 
-Starts a program pathImage or modifies the settings of a running process with pid pid to run inside a job with a process limit of processlimit (for example 1). Further arguments are passed to the program if started with RunAsJob.
+Starts a program pathImage or modifies the settings of a running process with pid pid to run inside a job with a process limit of processlimit (for example 1).
 
-This is a proof-of-concept and not of much practical use.
+With "/sessionid" the program is run in the given session and with the identity of the user logged into that session.
+
+With "/domain", "/user", and "/password" the process is started as a new login (similar to runas.exe does it).
+
+Further arguments (following "/args") are passed to the program if started with RunJob.
 
 
 # S4ULogon
