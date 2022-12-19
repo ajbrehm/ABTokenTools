@@ -2,7 +2,7 @@
 #include <wchar.h>
 #include <WtsApi32.h>
 
-BOOL debug = TRUE;
+BOOL debug = FALSE;
 BOOL ok = TRUE;
 LSTATUS status = 0;
 
