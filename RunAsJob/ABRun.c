@@ -21,7 +21,7 @@ void error(LPCWSTR sz)
 
 void help()
 {
-	LPWSTR sHelp = L"Usage: RunAsJob [/pid pid] [/image pathImage] [/processlimit processlimit] [/sessionid sessionid] [/domain sDomain] [/user sUser] [/password sPassword] [/args ...]\n";
+	LPWSTR sHelp = L"Usage: ABRun [/pid pid] [/image pathImage] [/processlimit processlimit] [/sessionid sessionid] [/domain sDomain] [/user sUser] [/password sPassword] [/args ...]\n";
 	wprintf(sHelp);
 	exit(0);
 }
@@ -105,13 +105,12 @@ int main()
 	// start process
 	if (tfImage) {
 
-		STARTUPINFO si;
+		STARTUPINFOW si;
 		PROCESS_INFORMATION pi;
-		si.cb = sizeof(STARTUPINFO);
+		si.cb = sizeof(STARTUPINFOW);
 		ZeroMemory(&si, si.cb);
 		ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
 		DWORD dwCreationFlags = 0;
-		//dwCreationFlags += CREATE_NEW_CONSOLE + CREATE_BREAKAWAY_FROM_JOB;
 		dwCreationFlags += CREATE_NEW_CONSOLE;
 
 		if (sessionid != 65536) {
@@ -120,6 +119,7 @@ int main()
 			error(L"WTSQueryUserToken");
 			CreateProcessAsUserW(hToken, pathImage, sNewCmdLine, NULL, NULL, FALSE, dwCreationFlags, NULL, NULL, &si, &pi);
 			error(L"CreateProcessAsUserW");
+			CloseHandle(hToken);
 		} else {
 			if (3 == cDomainUserPassword) {
 				ok = CreateProcessWithLogonW(sUser, sDomain, sPassword, 0, pathImage, sNewCmdLine, dwCreationFlags, NULL, NULL, &si, &pi);
@@ -139,7 +139,7 @@ int main()
 	error(L"OpenProcess");
 
 	// create a job object for the process
-	HANDLE hJob = CreateJobObjectW(NULL, L"RunAsJob");
+	HANDLE hJob = CreateJobObjectW(NULL, L"ABJob");
 	JOBOBJECT_BASIC_LIMIT_INFORMATION basiclimit;
 	basiclimit.LimitFlags = JOB_OBJECT_LIMIT_ACTIVE_PROCESS;
 	basiclimit.ActiveProcessLimit = processlimit;
