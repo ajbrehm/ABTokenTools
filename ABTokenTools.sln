@@ -27,7 +27,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AclEdit", "AclEdit\AclEdit.
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CredManAccess", "CredManAccess\CredManAccess.vcxproj", "{7A10C7E9-BFA4-478F-94B3-6163A2B7DC7D}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ABRun", "ABRun\ABRun.vcxproj", "{9A71C69D-9925-4430-8DE3-B8CE99F8C908}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RunJob", "RunJob\RunJob.vcxproj", "{9A71C69D-9925-4430-8DE3-B8CE99F8C908}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
