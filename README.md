@@ -77,7 +77,7 @@ Copies a file sourcefile to file targetfile using backup privileges to ignore AC
 
 **DecryptLsaSecrets pid SomeService**
 
-Assuming pid is the PID of the Local Security Authority (lsass.exe), gets the password stored to start a service SomeService stored in HKEY_LOCAL_MACHINE\SECURITY\Policy\Secrets. For some reason this fails if the service name contains an underscore (_) which most of them do.
+Assuming pid is the PID of the Local Security Authority (lsass.exe), gets the password stored to start a service SomeService stored in HKEY_LOCAL_MACHINE\SECURITY\Policy\Secrets. For some reason this fails if the service name contains an underscore (_) which most of them do. 
 
 
 # EnablePrivilege
@@ -112,13 +112,9 @@ This does the same as LookupAccountName but vice versa, gets the user name for a
 
 **RunJob [/pid pid] [/image pathImage] [/processlimit processlimit] [/sessionid sessionid] [/domain sDomain] [/user sUser] [/password sPassword] [/args ...]**
 
-Starts a program pathImage or modifies the settings of a running process with pid pid to run inside a job with a process limit of processlimit (for example 1).
+Starts a program pathImage or modifies the settings of a running process with pid pid to run inside a job with a process limit of processlimit (for example 1). Further arguments are passed to the program if started with RunJob.
 
-With "/sessionid" the program is run in the given session and with the identity of the user logged into that session.
-
-With "/domain", "/user", and "/password" the process is started as a new login (similar to runas.exe does it).
-
-Further arguments (following "/args") are passed to the program if started with RunJob.
+This is a proof-of-concept and not of much practical use.
 
 
 # S4ULogon
