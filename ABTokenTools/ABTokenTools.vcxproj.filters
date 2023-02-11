@@ -15,8 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="RegACL.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
+    <CopyFileToFolders Include="..\README.md" />
   </ItemGroup>
 </Project>
