@@ -14,6 +14,7 @@ BOOL debug = FALSE;
 HANDLE handle = NULL; // in case a handle is needed for something
 DWORD pid = 0; // in case a pid is needed
 DWORD result = 0; // store return code
+BOOL tfGetNamedSecurityInfo = TRUE; // use named security info
 
 void help()
 {
@@ -80,9 +81,17 @@ int main()
 	int objecttype = 0;
 	LPWSTR sObjectType = aCommandLine[1];
 	objecttype = (int)_wtoi(sObjectType);
-	//error(L"_wtoi");
+	error(L"_wtoi");
 
 	pathObject = aCommandLine[2];
+
+	int pid;
+	if (SE_KERNEL_OBJECT == objecttype) {
+		pid = (int)_wtoi(pathObject);
+		if (0 != pid) {
+			tfGetNamedSecurityInfo = FALSE; // this kernel object appears to be a process
+		}//if
+	}//if
 
 	SECURITY_INFORMATION DACL_AND_OWNER_SECURITY_INFORMATION = DACL_SECURITY_INFORMATION | OWNER_SECURITY_INFORMATION;
 	SECURITY_INFORMATION DACL_SECURITY_INFORMATION_AND_THEN_SOME = DACL_SECURITY_INFORMATION;
@@ -130,9 +139,7 @@ int main()
 			status = SetNamedSecurityInfo(pathObject, (SE_OBJECT_TYPE)objecttype, OWNER_SECURITY_INFORMATION, owner, NULL, NULL, NULL);
 			result = status;
 			error(L"SetNamedSecurityInfo");
-			LocalFree(psd);
 		}//if
-
 
 		BOOL tfDaclpresent = FALSE;
 		BOOL tfDaclDefaulted = FALSE;
