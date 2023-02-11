@@ -80,7 +80,7 @@ int main()
 	int objecttype = 0;
 	LPWSTR sObjectType = aCommandLine[1];
 	objecttype = (int)_wtoi(sObjectType);
-	//error(L"_wtoi");
+	error(L"_wtoi");
 
 	pathObject = aCommandLine[2];
 
@@ -130,9 +130,7 @@ int main()
 			status = SetNamedSecurityInfo(pathObject, (SE_OBJECT_TYPE)objecttype, OWNER_SECURITY_INFORMATION, owner, NULL, NULL, NULL);
 			result = status;
 			error(L"SetNamedSecurityInfo");
-			LocalFree(psd);
 		}//if
-
 
 		BOOL tfDaclpresent = FALSE;
 		BOOL tfDaclDefaulted = FALSE;
