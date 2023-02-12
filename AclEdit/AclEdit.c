@@ -109,17 +109,6 @@ int main()
 		ok = ConvertStringSecurityDescriptorToSecurityDescriptor(sddl, SDDL_REVISION_1, &psd, NULL);
 		error(L"ConvertStringSecurityDescriptorToSecurityDescriptor");
 
-		if (debug) {
-			ok = ConvertSecurityDescriptorToStringSecurityDescriptor(psd, SDDL_REVISION_1, DACL_SECURITY_INFORMATION, &sddl, NULL);
-			error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
-			fwprintf(stderr, L"SDDL for new security descriptor (DACL): %s\n", sddl);
-			LocalFree(sddl);
-			ok = ConvertSecurityDescriptorToStringSecurityDescriptor(psd, SDDL_REVISION_1, OWNER_SECURITY_INFORMATION, &sddl, NULL);
-			error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
-			fwprintf(stderr, L"SDDL for new security descriptor (Owner): %s\n", sddl);
-			LocalFree(sddl);
-		}//if
-
 		BOOL tfOwnerDefaulted = FALSE;
 		status = GetSecurityDescriptorOwner(psd, &owner, &tfOwnerDefaulted);
 		error(L"GetSecurityDescriptorOwner");
