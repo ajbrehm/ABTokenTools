@@ -74,6 +74,15 @@ DWORD GetSecurityInfoWrapper(HANDLE handle, LPWSTR pObjectName, SE_OBJECT_TYPE O
 	}//if
 }
 
+DWORD SetSecurityInfoWrapper(HANDLE handle, LPWSTR pObjectName, SE_OBJECT_TYPE ObjectType, SECURITY_INFORMATION SecurityInfo, PSID psidOwner, PSID psidGroup, PACL pDacl, PACL pSacl)
+{
+	if (handle) {
+		return SetSecurityInfo(handle, ObjectType, SecurityInfo, psidOwner, psidGroup, pDacl, pSacl);
+	} else {
+		return SetNamedSecurityInfo(pObjectName, ObjectType, SecurityInfo, psidOwner, psidGroup, pDacl, pSacl);
+	}//if
+}
+
 int main()
 {
 
@@ -93,10 +102,10 @@ int main()
 
 	pathObject = aCommandLine[2];
 
-	DWORD pid;
+	DWORD pid = 0;
 	if (SE_KERNEL_OBJECT == objecttype) {
 		pid = (int)_wtoi(pathObject);
-		if (0 != pid) {
+		if (pid) {
 			handle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
 		}//if
 	}//if
@@ -133,7 +142,7 @@ int main()
 		if (NULL != owner) {
 			EnablePrivilege(L"SeRestorePrivilege");
 			EnablePrivilege(L"SeTakeOwnershipPrivilege");
-			status = SetNamedSecurityInfo(pathObject, (SE_OBJECT_TYPE)objecttype, OWNER_SECURITY_INFORMATION, owner, NULL, NULL, NULL);
+			status = SetSecurityInfoWrapper(handle, pathObject, (SE_OBJECT_TYPE)objecttype, OWNER_SECURITY_INFORMATION, owner, NULL, NULL, NULL);
 			result = status;
 			error(L"SetNamedSecurityInfo");
 		}//if
@@ -144,7 +153,7 @@ int main()
 		error(L"GetSecurityDescriptorDacl");
 
 		if (NULL != pdacl) {
-			status = SetNamedSecurityInfo(pathObject, (SE_OBJECT_TYPE)objecttype, DACL_SECURITY_INFORMATION_AND_THEN_SOME, NULL, NULL, pdacl, NULL);
+			status = SetSecurityInfoWrapper(handle, pathObject, (SE_OBJECT_TYPE)objecttype, DACL_SECURITY_INFORMATION_AND_THEN_SOME, NULL, NULL, pdacl, NULL);
 			result = status;
 			error(L"SetNamedSecurityInfo");
 		}//if
@@ -158,6 +167,10 @@ int main()
 	wprintf(L"%s\n", sddl);
 	LocalFree(sddl);
 	LocalFree(psd);
+
+	if (pid) {
+		CloseHandle(handle);
+	}//if
 
 	return result;
 
