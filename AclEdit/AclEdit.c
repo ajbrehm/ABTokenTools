@@ -14,7 +14,6 @@ BOOL debug = FALSE;
 HANDLE handle = NULL; // in case a handle is needed for something
 DWORD pid = 0; // in case a pid is needed
 DWORD result = 0; // store return code
-BOOL tfGetNamedSecurityInfo = TRUE; // use named security info
 
 void help()
 {
@@ -66,6 +65,15 @@ void EnablePrivilege(LPWSTR sPrivilegeName)
 	error(L"AdjustTokenPrivileges");
 }
 
+DWORD GetSecurityInfoWrapper(HANDLE handle, LPWSTR pObjectName, SE_OBJECT_TYPE ObjectType, SECURITY_INFORMATION SecurityInfo, PSID* ppsidOwner, PSID* ppsidGroup, PACL* ppDacl, PACL* ppSacl, PSECURITY_DESCRIPTOR* ppSecurityDescriptor)
+{
+	if (handle) {
+		return GetSecurityInfo(handle, ObjectType, SecurityInfo, ppsidOwner, ppsidGroup, ppDacl, ppSacl, ppSecurityDescriptor);
+	} else {
+		return GetNamedSecurityInfo(pObjectName, ObjectType, SecurityInfo, ppsidOwner, ppsidGroup, ppDacl, ppSacl, ppSecurityDescriptor);
+	}//if
+}
+
 int main()
 {
 
@@ -85,11 +93,11 @@ int main()
 
 	pathObject = aCommandLine[2];
 
-	int pid;
+	DWORD pid;
 	if (SE_KERNEL_OBJECT == objecttype) {
 		pid = (int)_wtoi(pathObject);
 		if (0 != pid) {
-			tfGetNamedSecurityInfo = FALSE; // this kernel object appears to be a process
+			handle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
 		}//if
 	}//if
 
@@ -118,17 +126,6 @@ int main()
 		ok = ConvertStringSecurityDescriptorToSecurityDescriptor(sddl, SDDL_REVISION_1, &psd, NULL);
 		error(L"ConvertStringSecurityDescriptorToSecurityDescriptor");
 
-		if (debug) {
-			ok = ConvertSecurityDescriptorToStringSecurityDescriptor(psd, SDDL_REVISION_1, DACL_SECURITY_INFORMATION, &sddl, NULL);
-			error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
-			fwprintf(stderr, L"SDDL for new security descriptor (DACL): %s\n", sddl);
-			LocalFree(sddl);
-			ok = ConvertSecurityDescriptorToStringSecurityDescriptor(psd, SDDL_REVISION_1, OWNER_SECURITY_INFORMATION, &sddl, NULL);
-			error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
-			fwprintf(stderr, L"SDDL for new security descriptor (Owner): %s\n", sddl);
-			LocalFree(sddl);
-		}//if
-
 		BOOL tfOwnerDefaulted = FALSE;
 		status = GetSecurityDescriptorOwner(psd, &owner, &tfOwnerDefaulted);
 		error(L"GetSecurityDescriptorOwner");
@@ -154,7 +151,7 @@ int main()
 
 	}//if
 	
-	status = GetNamedSecurityInfo(pathObject, (SE_OBJECT_TYPE)objecttype, DACL_AND_OWNER_SECURITY_INFORMATION , NULL, NULL, NULL, NULL, &psd);
+	status = GetSecurityInfoWrapper(handle, pathObject, (SE_OBJECT_TYPE)objecttype, DACL_AND_OWNER_SECURITY_INFORMATION, NULL, NULL, NULL, NULL, &psd);
 	error(L"GetNamedSecurityInfo");
 	ok = ConvertSecurityDescriptorToStringSecurityDescriptor(psd, SDDL_REVISION_1, DACL_AND_OWNER_SECURITY_INFORMATION, &sddl, NULL);
 	error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
