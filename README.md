@@ -20,6 +20,7 @@ Rights are in the format "SeInteractiveLogonRight" and "SeDenyInteractiveLogonRi
 Privileges are in the format "SeShutdownPrivilege".  
 This also applies to other commands.
 
+
 # AclEdit
 
 **AclEdit type pathObject [sddl] [D|E]**
@@ -43,12 +44,17 @@ Types are these:
 13      SE_REGISTRY_WOW64_64KEY  
 
 Currently supports setting DACLs and owners. Setting an owner might require the appropriate privilege.  
-Disable or enable inheritance with AclEdit type pathObject sddl D|E.  
-File, service, printer, registry, and share objects take UNC paths, DS_OBJECT takes X.500 format.  
+Disable or enable inheritance with AclEdit type pathObject sddl D|E. I don't know what effect this can have outside filesystem ACLs.  
+File, service, printer, registry, and share objects take UNC paths, DS_OBJECT takes X.500 format.
+If a number is given as pathObject for a SE_KERNEL_OBJECT, it is read as a process id.
 
-**AclEdit 1 "C:\\"**
+**AclEdit 1 "C:\"**
 
 Shows the Security Descriptor of the root of drive C.
+
+**AclEdit 6 42**
+
+Shows the Security Descriptor for the process with process id 42.
 
 
 # CredManAccess

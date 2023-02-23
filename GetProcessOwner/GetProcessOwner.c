@@ -135,11 +135,11 @@ int main()
 	DWORD cchName = 0;
 	DWORD cchDomainName = 0;
 	PSID_NAME_USE use = 0;
-	result = LookupAccountSidW(NULL, pSID, NULL, &cchName, NULL, &cchDomainName, &use);
+	result = LookupAccountSidW(NULL, pSID, NULL, &cchName, NULL, &cchDomainName, use);
 	Error(L"LookupAccountSidW");
 	LPWSTR szName = (LPWSTR)GlobalAlloc(0, cchName * sizeof(WCHAR)); // alloc must free
 	LPWSTR szDomainName = (LPWSTR)GlobalAlloc(0, cchDomainName * sizeof(WCHAR)); //alloc must free
-	result = LookupAccountSidW(NULL, pSID, szName, &cchName, szDomainName, &cchDomainName, &use);
+	result = LookupAccountSidW(NULL, pSID, szName, &cchName, szDomainName, &cchDomainName, use);
 	Error(L"LookupAccountSidW1");
 
 	// output the user name
