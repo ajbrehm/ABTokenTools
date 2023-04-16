@@ -104,6 +104,7 @@ DWORD GetSddlFromBinaryRegistryValue(HKEY hKey, LPWSTR pathRegistryKey, LPWSTR p
 	SECURITY_INFORMATION secinfo = DACL_SECURITY_INFORMATION | OWNER_SECURITY_INFORMATION | SACL_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION;
 	status = ConvertSecurityDescriptorToStringSecurityDescriptorW(pSD, SDDL_REVISION_1, secinfo, &sddl, &cbSddl);
 	Error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
+	GlobalFree(pData);
 }
 
 int main()
