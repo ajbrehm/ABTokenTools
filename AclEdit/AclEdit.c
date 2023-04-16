@@ -32,8 +32,9 @@ void help()
 	wprintf(L"%s\n", L"11\tSE_WMIGUID_OBJECT");
 	wprintf(L"%s\n", L"12\tSE_REGISTRY_WOW64_32KEY");
 	wprintf(L"%s\n", L"13\tSE_REGISTRY_WOW64_64KEY");
-	wprintf(L"%s\n", L"100\tRegistry Value SD\n");
-	wprintf(L"Currently supports setting DACLs and owners. Setting an owner might require the appropriate privilege.\n");
+	wprintf(L"%s\n", L"100\tRegistry Value HKEY_LOCAL_MACHINE SD");
+	wprintf(L"%s\n", L"101\tRegistry Value Scheduled Task SD");
+	wprintf(L"\nCurrently supports setting DACLs and owners. Setting an owner might require the appropriate privilege.\n");
 	wprintf(L"Disable or enable inheritance with AclEdit type pathObject sddl D|E.\n");
 	wprintf(L"File, service, printer, registry, and share objects take UNC paths, DS_OBJECT takes X.500 format.\n");
 	wprintf(L"A process id is a kernel object.\n\n");
@@ -85,15 +86,18 @@ DWORD SetSecurityInfoWrapper(HANDLE handle, LPWSTR pObjectName, SE_OBJECT_TYPE O
 	}//if
 }
 
-DWORD GetSddlFromBinaryRegistryValue(HKEY hHive, LPWSTR pathRegistryKey, LPWSTR sValueName)
+DWORD GetSddlFromBinaryRegistryValue(HKEY hKey, LPWSTR pathRegistryKey, LPWSTR pathRegistrySubKey, LPWSTR sValueName)
 {
+	status = RegOpenKeyExW(hKey, pathRegistryKey, 0, KEY_READ, &hKey);
+	Error(L"RegOpenKeyExW");
 	DWORD cbData = 0;
-	status = RegGetValueW(hHive, pathRegistryKey, sValueName, RRF_RT_REG_BINARY, NULL, NULL, &cbData);
+	status = RegGetValueW(hKey, pathRegistrySubKey, sValueName, RRF_RT_REG_BINARY, NULL, NULL, &cbData);
 	Error(L"RegGetValueW");
 	if (debug) { wprintf(L"Registry value [%s] data has size of [%u].\n", sValueName, cbData); }
 	PVOID pData = GlobalAlloc(0, cbData);
-	status = RegGetValueW(hHive, pathRegistryKey, sValueName, RRF_RT_REG_BINARY, NULL, pData, &cbData);
+	status = RegGetValueW(hKey, pathRegistrySubKey, sValueName, RRF_RT_REG_BINARY, NULL, pData, &cbData);
 	Error(L"RegGetValueW");
+	RegCloseKey(hKey);
 	PSECURITY_DESCRIPTOR pSD = (PSECURITY_DESCRIPTOR)pData;
 	if (!pSD) { return 1; }
 	DWORD cbSddl = 0;
@@ -126,6 +130,23 @@ int main()
 		if (pid) {
 			handle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
 		}//if
+	}//if
+
+	if (objecttype >= 100) {
+		switch (objecttype)
+		{
+		case 100:
+			GetSddlFromBinaryRegistryValue(HKEY_LOCAL_MACHINE, pathObject, NULL, L"SD");
+		case 101:
+			GetSddlFromBinaryRegistryValue(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\", pathObject, L"SD");
+		default:
+			break;
+		}
+		if (sddl) {
+			wprintf(L"%s\n", sddl);
+			LocalFree(sddl);
+		}//if
+		return 0;
 	}//if
 
 	SECURITY_INFORMATION DACL_AND_OWNER_SECURITY_INFORMATION = DACL_SECURITY_INFORMATION | OWNER_SECURITY_INFORMATION;
