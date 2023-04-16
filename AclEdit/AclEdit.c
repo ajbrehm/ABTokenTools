@@ -10,7 +10,7 @@ LPWSTR sddl; // an sddl for a dacl
 PSECURITY_DESCRIPTOR psd = NULL; // a pointer to a security descriptor
 PACL pdacl = NULL; // a pointer to a DACL
 PSID owner = NULL; // a pointer to an owner
-BOOL debug = FALSE;
+BOOL debug = TRUE;
 HANDLE handle = NULL; // in case a handle is needed for something
 DWORD pid = 0; // in case a pid is needed
 DWORD result = 0; // store return code
@@ -31,20 +31,22 @@ void help()
 	wprintf(L"%s\n", L"10\tSE_PROVIDER_DEFINED_OBJECT");
 	wprintf(L"%s\n", L"11\tSE_WMIGUID_OBJECT");
 	wprintf(L"%s\n", L"12\tSE_REGISTRY_WOW64_32KEY");
-	wprintf(L"%s\n", L"13\tSE_REGISTRY_WOW64_64KEY\n");
+	wprintf(L"%s\n", L"13\tSE_REGISTRY_WOW64_64KEY");
+	wprintf(L"%s\n", L"100\tRegistry Value SD\n");
 	wprintf(L"Currently supports setting DACLs and owners. Setting an owner might require the appropriate privilege.\n");
 	wprintf(L"Disable or enable inheritance with AclEdit type pathObject sddl D|E.\n");
-	wprintf(L"File, service, printer, registry, and share objects take UNC paths, DS_OBJECT takes X.500 format.\n\n");
+	wprintf(L"File, service, printer, registry, and share objects take UNC paths, DS_OBJECT takes X.500 format.\n");
+	wprintf(L"A process id is a kernel object.\n\n");
 }
 
-void error(LPCWSTR sz)
+void Error(LPCWSTR sz)
 {
 	if (!debug) { return; }
 	fwprintf(stderr, sz);
-	if ((0 == status) || (!ok)) {
+	if ((0 == status) && (ok)) {
 		fwprintf(stderr, L"\tOK\n");
 	} else {
-		fwprintf(stderr, L"\t%d\n", status);
+		fwprintf(stderr, L"\t%d\n", GetLastError());
 	}//if
 	status = 0;
 	ok = TRUE;
@@ -57,12 +59,12 @@ void EnablePrivilege(LPWSTR sPrivilegeName)
 	TOKEN_PRIVILEGES privs;
 	LUID luid;
 	ok = LookupPrivilegeValue(NULL, sPrivilegeName, &luid);
-	error(L"LookupPrivilegeValue");
+	Error(L"LookupPrivilegeValue");
 	privs.PrivilegeCount = 1;
 	privs.Privileges[0].Luid = luid;
 	privs.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
 	ok = AdjustTokenPrivileges(hCurrentProcessToken, FALSE, &privs, sizeof(TOKEN_PRIVILEGES), NULL, NULL);
-	error(L"AdjustTokenPrivileges");
+	Error(L"AdjustTokenPrivileges");
 }
 
 DWORD GetSecurityInfoWrapper(HANDLE handle, LPWSTR pObjectName, SE_OBJECT_TYPE ObjectType, SECURITY_INFORMATION SecurityInfo, PSID* ppsidOwner, PSID* ppsidGroup, PACL* ppDacl, PACL* ppSacl, PSECURITY_DESCRIPTOR* ppSecurityDescriptor)
@@ -83,9 +85,25 @@ DWORD SetSecurityInfoWrapper(HANDLE handle, LPWSTR pObjectName, SE_OBJECT_TYPE O
 	}//if
 }
 
+DWORD GetSddlFromBinaryRegistryValue(HKEY hHive, LPWSTR pathRegistryKey, LPWSTR sValueName)
+{
+	DWORD cbData = 0;
+	status = RegGetValueW(hHive, pathRegistryKey, sValueName, RRF_RT_REG_BINARY, NULL, NULL, &cbData);
+	Error(L"RegGetValueW");
+	if (debug) { wprintf(L"Registry value [%s] data has size of [%u].\n", sValueName, cbData); }
+	PVOID pData = GlobalAlloc(0, cbData);
+	status = RegGetValueW(hHive, pathRegistryKey, sValueName, RRF_RT_REG_BINARY, NULL, pData, &cbData);
+	Error(L"RegGetValueW");
+	PSECURITY_DESCRIPTOR pSD = (PSECURITY_DESCRIPTOR)pData;
+	if (!pSD) { return 1; }
+	DWORD cbSddl = 0;
+	SECURITY_INFORMATION secinfo = DACL_SECURITY_INFORMATION | OWNER_SECURITY_INFORMATION | SACL_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION;
+	status = ConvertSecurityDescriptorToStringSecurityDescriptorW(pSD, SDDL_REVISION_1, secinfo, &sddl, &cbSddl);
+	Error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
+}
+
 int main()
 {
-
 	LPWSTR szCommandLine = GetCommandLineW();
 	int args = 0;
 	LPWSTR* aCommandLine = CommandLineToArgvW(szCommandLine, &args);
@@ -98,7 +116,7 @@ int main()
 	int objecttype = 0;
 	LPWSTR sObjectType = aCommandLine[1];
 	objecttype = (int)_wtoi(sObjectType);
-	error(L"_wtoi");
+	Error(L"_wtoi");
 
 	pathObject = aCommandLine[2];
 
@@ -132,38 +150,38 @@ int main()
 		sddl = aCommandLine[3];
 		if (debug) { fwprintf(stderr, L"SDDL given:\t%s\n", sddl); }
 
-		ok = ConvertStringSecurityDescriptorToSecurityDescriptor(sddl, SDDL_REVISION_1, &psd, NULL);
-		error(L"ConvertStringSecurityDescriptorToSecurityDescriptor");
+		ok = ConvertStringSecurityDescriptorToSecurityDescriptorW(sddl, SDDL_REVISION_1, &psd, NULL);
+		Error(L"ConvertStringSecurityDescriptorToSecurityDescriptor");
 
 		BOOL tfOwnerDefaulted = FALSE;
 		status = GetSecurityDescriptorOwner(psd, &owner, &tfOwnerDefaulted);
-		error(L"GetSecurityDescriptorOwner");
+		Error(L"GetSecurityDescriptorOwner");
 
 		if (NULL != owner) {
 			EnablePrivilege(L"SeRestorePrivilege");
 			EnablePrivilege(L"SeTakeOwnershipPrivilege");
 			status = SetSecurityInfoWrapper(handle, pathObject, (SE_OBJECT_TYPE)objecttype, OWNER_SECURITY_INFORMATION, owner, NULL, NULL, NULL);
 			result = status;
-			error(L"SetNamedSecurityInfo");
+			Error(L"SetNamedSecurityInfo");
 		}//if
 
 		BOOL tfDaclpresent = FALSE;
 		BOOL tfDaclDefaulted = FALSE;
 		status = GetSecurityDescriptorDacl(psd, &tfDaclpresent, &pdacl, &tfDaclDefaulted);
-		error(L"GetSecurityDescriptorDacl");
+		Error(L"GetSecurityDescriptorDacl");
 
 		if (NULL != pdacl) {
 			status = SetSecurityInfoWrapper(handle, pathObject, (SE_OBJECT_TYPE)objecttype, DACL_SECURITY_INFORMATION_AND_THEN_SOME, NULL, NULL, pdacl, NULL);
 			result = status;
-			error(L"SetNamedSecurityInfo");
+			Error(L"SetNamedSecurityInfo");
 		}//if
 
 	}//if
 	
 	status = GetSecurityInfoWrapper(handle, pathObject, (SE_OBJECT_TYPE)objecttype, DACL_AND_OWNER_SECURITY_INFORMATION, NULL, NULL, NULL, NULL, &psd);
-	error(L"GetNamedSecurityInfo");
+	Error(L"GetNamedSecurityInfo");
 	ok = ConvertSecurityDescriptorToStringSecurityDescriptor(psd, SDDL_REVISION_1, DACL_AND_OWNER_SECURITY_INFORMATION, &sddl, NULL);
-	error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
+	Error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
 	wprintf(L"%s\n", sddl);
 	LocalFree(sddl);
 	LocalFree(psd);
