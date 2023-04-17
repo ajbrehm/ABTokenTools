@@ -5,7 +5,7 @@
 
 LSTATUS status = 0;
 BOOL ok = TRUE;
-LPWSTR pathObject = (LPWSTR)L""; // a path to an object
+LPWSTR pathObject = NULL; // a path to an object
 LPWSTR sddl = NULL; // an sddl for a dacl
 PSECURITY_DESCRIPTOR psd = NULL; // a pointer to a security descriptor
 PACL pdacl = NULL; // a pointer to a DACL
@@ -15,9 +15,9 @@ HANDLE handle = NULL; // in case a handle is needed for something
 DWORD pid = 0; // in case a pid is needed
 DWORD result = 0; // store return code
 
-void help()
+void Help()
 {
-	wprintf(L"AclEdit type pathObject [sddl] [D|E]\n\n");
+	wprintf(L"AclEdit /type type /object pathObject /pid pid /sddl sddl /inheritance [D:E] /value sRegistryValueName /task pathScheduledTask\n\n");
 	wprintf(L"%s\n", L"0\tSE_UNKNOWN_OBJECT_TYPE");
 	wprintf(L"%s\n", L"1\tSE_FILE_OBJECT");
 	wprintf(L"%s\n", L"2\tSE_SERVICE");
@@ -32,12 +32,8 @@ void help()
 	wprintf(L"%s\n", L"11\tSE_WMIGUID_OBJECT");
 	wprintf(L"%s\n", L"12\tSE_REGISTRY_WOW64_32KEY");
 	wprintf(L"%s\n", L"13\tSE_REGISTRY_WOW64_64KEY");
-	wprintf(L"%s\n", L"100\tRegistry Value HKEY_LOCAL_MACHINE SD");
-	wprintf(L"%s\n", L"101\tRegistry Value Scheduled Task SD");
 	wprintf(L"\nCurrently supports setting DACLs and owners. Setting an owner might require the appropriate privilege.\n");
-	wprintf(L"Disable or enable inheritance with AclEdit type pathObject sddl D|E.\n");
 	wprintf(L"File, service, printer, registry, and share objects take UNC paths, DS_OBJECT takes X.500 format.\n");
-	wprintf(L"A process id is a kernel object.\n\n");
 }
 
 void Error(LPCWSTR sz)
@@ -72,18 +68,22 @@ void EnablePrivilege(LPWSTR sPrivilegeName)
 DWORD GetSecurityInfoWrapper(HANDLE handle, LPWSTR pObjectName, SE_OBJECT_TYPE ObjectType, SECURITY_INFORMATION SecurityInfo, PSID* ppsidOwner, PSID* ppsidGroup, PACL* ppDacl, PACL* ppSacl, PSECURITY_DESCRIPTOR* ppSecurityDescriptor)
 {
 	if (handle) {
-		return GetSecurityInfo(handle, ObjectType, SecurityInfo, ppsidOwner, ppsidGroup, ppDacl, ppSacl, ppSecurityDescriptor);
+		status = GetSecurityInfo(handle, ObjectType, SecurityInfo, ppsidOwner, ppsidGroup, ppDacl, ppSacl, ppSecurityDescriptor);
+		Error(L"GetSecurityInfo");
 	} else {
-		return GetNamedSecurityInfo(pObjectName, ObjectType, SecurityInfo, ppsidOwner, ppsidGroup, ppDacl, ppSacl, ppSecurityDescriptor);
+		status = GetNamedSecurityInfo(pObjectName, ObjectType, SecurityInfo, ppsidOwner, ppsidGroup, ppDacl, ppSacl, ppSecurityDescriptor);
+		Error(L"GetNamedSecurityInfo");
 	}//if
 }
 
 DWORD SetSecurityInfoWrapper(HANDLE handle, LPWSTR pObjectName, SE_OBJECT_TYPE ObjectType, SECURITY_INFORMATION SecurityInfo, PSID psidOwner, PSID psidGroup, PACL pDacl, PACL pSacl)
 {
 	if (handle) {
-		return SetSecurityInfo(handle, ObjectType, SecurityInfo, psidOwner, psidGroup, pDacl, pSacl);
+		status = SetSecurityInfo(handle, ObjectType, SecurityInfo, psidOwner, psidGroup, pDacl, pSacl);
+		Error(L"SetSecurityInfo");
 	} else {
-		return SetNamedSecurityInfo(pObjectName, ObjectType, SecurityInfo, psidOwner, psidGroup, pDacl, pSacl);
+		status = SetNamedSecurityInfo(pObjectName, ObjectType, SecurityInfo, psidOwner, psidGroup, pDacl, pSacl);
+		Error(L"SetNamedSecurityInfo");
 	}//if
 }
 
@@ -136,7 +136,6 @@ DWORD GetSetSddlFromToSecurityInfo(int objecttype, LPWSTR sInheritance)
 	}//if
 
 	status = GetSecurityInfoWrapper(handle, pathObject, (SE_OBJECT_TYPE)objecttype, DACL_AND_OWNER_SECURITY_INFORMATION, NULL, NULL, NULL, NULL, &psd);
-	Error(L"GetNamedSecurityInfo");
 	ok = ConvertSecurityDescriptorToStringSecurityDescriptor(psd, SDDL_REVISION_1, DACL_AND_OWNER_SECURITY_INFORMATION, &sddl, NULL);
 	Error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
 }
@@ -197,59 +196,83 @@ int main()
 	LPWSTR* aCommandLine = CommandLineToArgvW(szCommandLine, &args);
 
 	if (args < 3) {
-		help();
+		Help();
 		exit(0);
 	}//if
 
 	int objecttype = 0;
-	LPWSTR sObjectType = aCommandLine[1];
-	objecttype = (int)_wtoi(sObjectType);
-	Error(L"_wtoi");
-
-	pathObject = aCommandLine[2];
-
 	DWORD pid = 0;
-	if (SE_KERNEL_OBJECT == objecttype) {
-		pid = (int)_wtoi(pathObject);
-		if (pid) {
-			handle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
-		}//if
-	}//if
-
-	if (args >= 4) {
-		sddl = aCommandLine[3];
-	}//if
-
 	LPWSTR sInheritance = NULL;
-	if (args >= 5) {
-		sInheritance = aCommandLine[4];
+	LPWSTR sValueName = NULL;
+	LPWSTR pathScheduledTask = NULL;
+
+	for (int i = 1; i < args; i = i + 2) {
+		if (CSTR_EQUAL == CompareStringEx(NULL, 0, aCommandLine[i], -1, L"/type", 5, NULL, NULL, 0)) {
+			if (i + 1 == args) { Help(); }
+			objecttype = (int)_wtoi(aCommandLine[i + 1]);
+		}//if
+		if (CSTR_EQUAL == CompareStringEx(NULL, 0, aCommandLine[i], -1, L"/object", 7, NULL, NULL, 0)) {
+			if (i + 1 == args) { Help(); }
+			pathObject = aCommandLine[i + 1];
+		}//if
+		if (CSTR_EQUAL == CompareStringEx(NULL, 0, aCommandLine[i], -1, L"/pid", 4, NULL, NULL, 0)) {
+			if (i + 1 == args) { Help(); }
+			pid = (int)_wtoi(aCommandLine[i + 1]);
+			if (pid) {
+				handle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
+				Error(L"OpenProcess");
+			}//if
+		}//if
+		if (CSTR_EQUAL == CompareStringEx(NULL, 0, aCommandLine[i], -1, L"/sddl", 5, NULL, NULL, 0)) {
+			if (i + 1 == args) { Help(); }
+			sddl = aCommandLine[i + 1];
+		}//if
+		if (CSTR_EQUAL == CompareStringEx(NULL, 0, aCommandLine[i], -1, L"/inheritance", 12, NULL, NULL, 0)) {
+			if (i + 1 == args) { Help(); }
+			sInheritance = aCommandLine[i + 1];
+		}//if
+		if (CSTR_EQUAL == CompareStringEx(NULL, 0, aCommandLine[i], -1, L"/value", 6, NULL, NULL, 0)) {
+			if (i + 1 == args) { Help(); }
+			sValueName = aCommandLine[i + 1];
+		}//if
+		if (CSTR_EQUAL == CompareStringEx(NULL, 0, aCommandLine[i], -1, L"/task", 5, NULL, NULL, 0)) {
+			if (i + 1 == args) { Help(); }
+			pathScheduledTask = aCommandLine[i + 1];
+		}//if
+	}//for
+
+	if (debug) {
+		wprintf(L"type: [%d]\n", objecttype);
+		wprintf(L"object: [%s]\n", pathObject);
+		wprintf(L"pid: [%d]\n", pid);
+		wprintf(L"sddl: [%s]\n", sddl);
+		wprintf(L"inheritance: [%s]\n", sInheritance);
+		wprintf(L"value: [%s]\n", sValueName);
+		wprintf(L"task: [%s]\n", pathScheduledTask);
 	}//if
 
-	switch (objecttype)
-	{
-	case 100:
-		GetSetSddlFromToBinaryRegistryValue(HKEY_LOCAL_MACHINE, pathObject, NULL, L"SD");
-		break;
-	case 101:
-		GetSetSddlFromToBinaryRegistryValue(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\", pathObject, L"SD");
-		break;
-	default:
+	if (objecttype && pathObject) {
 		GetSetSddlFromToSecurityInfo(objecttype, sInheritance);
-		break;
-	}
+	}//if
+
+	if (pid) {
+		GetSetSddlFromToSecurityInfo(SE_KERNEL_OBJECT, sInheritance);
+	}//if
+
+	if (sValueName && pathObject) {
+		GetSetSddlFromToBinaryRegistryValue(HKEY_LOCAL_MACHINE, pathObject, NULL, sValueName);
+	}//if
+
+	if (pathScheduledTask) {
+		GetSetSddlFromToBinaryRegistryValue(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\", pathObject, L"SD");
+	}//if
+
 	if (sddl) {
 		wprintf(L"%s\n", sddl);
 		LocalFree(sddl);
 	}//if
-	return 0;
-
-	wprintf(L"%s\n", sddl);
-	LocalFree(sddl);
 	if (psd) { LocalFree(psd); }
 	if (pid) { CloseHandle(handle); }
 
 	return result;
-
-
-
 }
