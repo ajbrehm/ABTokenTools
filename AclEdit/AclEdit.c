@@ -87,6 +87,60 @@ DWORD SetSecurityInfoWrapper(HANDLE handle, LPWSTR pObjectName, SE_OBJECT_TYPE O
 	}//if
 }
 
+DWORD GetSetSddlFromToSecurityInfo(int objecttype, LPWSTR sInheritance)
+{
+	SECURITY_INFORMATION DACL_AND_OWNER_SECURITY_INFORMATION = DACL_SECURITY_INFORMATION | OWNER_SECURITY_INFORMATION;
+	SECURITY_INFORMATION DACL_SECURITY_INFORMATION_AND_THEN_SOME = DACL_SECURITY_INFORMATION;
+
+	if (sddl) {
+
+		if (sInheritance) {
+			if (0 == wcscmp(L"D", sInheritance)) {
+				if (debug) { fwprintf(stderr, L"Disabling inheritance.\n"); }
+				DACL_SECURITY_INFORMATION_AND_THEN_SOME = DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION;
+			}//if
+			if (0 == wcscmp(L"E", sInheritance)) {
+				DACL_SECURITY_INFORMATION_AND_THEN_SOME = DACL_SECURITY_INFORMATION | UNPROTECTED_DACL_SECURITY_INFORMATION;
+				if (debug) { fwprintf(stderr, L"Enabling inheritance.\n"); }
+			}//if
+		}//if
+
+		if (debug) { fwprintf(stderr, L"SDDL given:\t%s\n", sddl); }
+
+		ok = ConvertStringSecurityDescriptorToSecurityDescriptorW(sddl, SDDL_REVISION_1, &psd, NULL);
+		Error(L"ConvertStringSecurityDescriptorToSecurityDescriptor");
+
+		BOOL tfOwnerDefaulted = FALSE;
+		status = GetSecurityDescriptorOwner(psd, &owner, &tfOwnerDefaulted);
+		Error(L"GetSecurityDescriptorOwner");
+
+		if (NULL != owner) {
+			EnablePrivilege(L"SeRestorePrivilege");
+			EnablePrivilege(L"SeTakeOwnershipPrivilege");
+			status = SetSecurityInfoWrapper(handle, pathObject, (SE_OBJECT_TYPE)objecttype, OWNER_SECURITY_INFORMATION, owner, NULL, NULL, NULL);
+			result = status;
+			Error(L"SetNamedSecurityInfo");
+		}//if
+
+		BOOL tfDaclPresent = FALSE;
+		BOOL tfDaclDefaulted = FALSE;
+		status = GetSecurityDescriptorDacl(psd, &tfDaclPresent, &pdacl, &tfDaclDefaulted);
+		Error(L"GetSecurityDescriptorDacl");
+
+		if (NULL != pdacl) {
+			status = SetSecurityInfoWrapper(handle, pathObject, (SE_OBJECT_TYPE)objecttype, DACL_SECURITY_INFORMATION_AND_THEN_SOME, NULL, NULL, pdacl, NULL);
+			result = status;
+			Error(L"SetNamedSecurityInfo");
+		}//if
+
+	}//if
+
+	status = GetSecurityInfoWrapper(handle, pathObject, (SE_OBJECT_TYPE)objecttype, DACL_AND_OWNER_SECURITY_INFORMATION, NULL, NULL, NULL, NULL, &psd);
+	Error(L"GetNamedSecurityInfo");
+	ok = ConvertSecurityDescriptorToStringSecurityDescriptor(psd, SDDL_REVISION_1, DACL_AND_OWNER_SECURITY_INFORMATION, &sddl, NULL);
+	Error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
+}
+
 DWORD GetSddlFromBinaryRegistryValue(HKEY hKey, LPWSTR pathRegistryKey, LPWSTR pathRegistrySubKey, LPWSTR sValueName)
 {
 	status = RegOpenKeyExW(hKey, pathRegistryKey, 0, KEY_READ, &hKey);
@@ -138,12 +192,6 @@ DWORD GetSetSddlFromToBinaryRegistryValue(HKEY hKey, LPWSTR pathRegistryKey, LPW
 
 int main()
 {
-	//GetSetSddlToFromBinaryRegistryValue(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\", L"benoit", L"SD");
-	
-	sddl = L"O:BAD:AI(A;OICIIO;FA;;;BA)";
-	GetSetSddlFromToBinaryRegistryValue(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\", L"benoit", L"SD");
-	return 0;
-
 	LPWSTR szCommandLine = GetCommandLineW();
 	int args = 0;
 	LPWSTR* aCommandLine = CommandLineToArgvW(szCommandLine, &args);
@@ -168,89 +216,37 @@ int main()
 		}//if
 	}//if
 
-	LPWSTR s = GlobalAlloc(0, 65536);
-
-	if (objecttype >= 100) {
-		if (args >= 4) {
-			sddl = aCommandLine[3];
-		}//if
-		switch (objecttype)
-		{
-		case 100:
-			GetSetSddlFromToBinaryRegistryValue(HKEY_LOCAL_MACHINE, pathObject, NULL, L"SD");
-		case 101:
-			GetSetSddlFromToBinaryRegistryValue(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\", pathObject, L"SD");
-		default:
-			break;
-		}
-		if (sddl) {
-			wprintf(L"%s\n", sddl);
-			LocalFree(sddl);
-		}//if
-		return 0;
-	}//if
-
-	SECURITY_INFORMATION DACL_AND_OWNER_SECURITY_INFORMATION = DACL_SECURITY_INFORMATION | OWNER_SECURITY_INFORMATION;
-	SECURITY_INFORMATION DACL_SECURITY_INFORMATION_AND_THEN_SOME = DACL_SECURITY_INFORMATION;
-
 	if (args >= 4) {
-
-		if (5 == args) {
-
-			LPWSTR sInheritance = aCommandLine[4];
-			if (0 == wcscmp(L"D", sInheritance)) {
-				if (debug) {fwprintf(stderr, L"Disabling inheritance.\n");}
-				DACL_SECURITY_INFORMATION_AND_THEN_SOME = DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION;
-			}//if
-			if (0 == wcscmp(L"E", sInheritance)) {
-				DACL_SECURITY_INFORMATION_AND_THEN_SOME = DACL_SECURITY_INFORMATION | UNPROTECTED_DACL_SECURITY_INFORMATION;
-				if (debug) { fwprintf(stderr, L"Enabling inheritance.\n"); }
-			}//if
-
-		}//if
-
 		sddl = aCommandLine[3];
-		if (debug) { fwprintf(stderr, L"SDDL given:\t%s\n", sddl); }
-
-		ok = ConvertStringSecurityDescriptorToSecurityDescriptorW(sddl, SDDL_REVISION_1, &psd, NULL);
-		Error(L"ConvertStringSecurityDescriptorToSecurityDescriptor");
-
-		BOOL tfOwnerDefaulted = FALSE;
-		status = GetSecurityDescriptorOwner(psd, &owner, &tfOwnerDefaulted);
-		Error(L"GetSecurityDescriptorOwner");
-
-		if (NULL != owner) {
-			EnablePrivilege(L"SeRestorePrivilege");
-			EnablePrivilege(L"SeTakeOwnershipPrivilege");
-			status = SetSecurityInfoWrapper(handle, pathObject, (SE_OBJECT_TYPE)objecttype, OWNER_SECURITY_INFORMATION, owner, NULL, NULL, NULL);
-			result = status;
-			Error(L"SetNamedSecurityInfo");
-		}//if
-
-		BOOL tfDaclPresent = FALSE;
-		BOOL tfDaclDefaulted = FALSE;
-		status = GetSecurityDescriptorDacl(psd, &tfDaclPresent, &pdacl, &tfDaclDefaulted);
-		Error(L"GetSecurityDescriptorDacl");
-
-		if (NULL != pdacl) {
-			status = SetSecurityInfoWrapper(handle, pathObject, (SE_OBJECT_TYPE)objecttype, DACL_SECURITY_INFORMATION_AND_THEN_SOME, NULL, NULL, pdacl, NULL);
-			result = status;
-			Error(L"SetNamedSecurityInfo");
-		}//if
-
 	}//if
-	
-	status = GetSecurityInfoWrapper(handle, pathObject, (SE_OBJECT_TYPE)objecttype, DACL_AND_OWNER_SECURITY_INFORMATION, NULL, NULL, NULL, NULL, &psd);
-	Error(L"GetNamedSecurityInfo");
-	ok = ConvertSecurityDescriptorToStringSecurityDescriptor(psd, SDDL_REVISION_1, DACL_AND_OWNER_SECURITY_INFORMATION, &sddl, NULL);
-	Error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
+
+	LPWSTR sInheritance = NULL;
+	if (args >= 5) {
+		sInheritance = aCommandLine[4];
+	}//if
+
+	switch (objecttype)
+	{
+	case 100:
+		GetSetSddlFromToBinaryRegistryValue(HKEY_LOCAL_MACHINE, pathObject, NULL, L"SD");
+		break;
+	case 101:
+		GetSetSddlFromToBinaryRegistryValue(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\", pathObject, L"SD");
+		break;
+	default:
+		GetSetSddlFromToSecurityInfo(objecttype, sInheritance);
+		break;
+	}
+	if (sddl) {
+		wprintf(L"%s\n", sddl);
+		LocalFree(sddl);
+	}//if
+	return 0;
+
 	wprintf(L"%s\n", sddl);
 	LocalFree(sddl);
-	LocalFree(psd);
-
-	if (pid) {
-		CloseHandle(handle);
-	}//if
+	if (psd) { LocalFree(psd); }
+	if (pid) { CloseHandle(handle); }
 
 	return result;
 
