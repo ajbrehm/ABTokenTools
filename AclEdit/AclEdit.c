@@ -157,11 +157,11 @@ DWORD GetSddlFromBinaryRegistryValue(HKEY hKey, LPWSTR pathRegistryKey, LPWSTR p
 	Error(L"RegGetValueW");
 	RegCloseKey(hKey);
 	Error(L"RegCloseKey");
-	PSECURITY_DESCRIPTOR pSD = (PSECURITY_DESCRIPTOR)pData;
-	if (!pSD) { return 1; }
+	psd = (PSECURITY_DESCRIPTOR)pData;
+	if (!psd) { return 1; }
 	DWORD cbSddl = 0;
 	SECURITY_INFORMATION secinfo = DACL_SECURITY_INFORMATION | OWNER_SECURITY_INFORMATION;// | SACL_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION;
-	status = ConvertSecurityDescriptorToStringSecurityDescriptorW(pSD, SDDL_REVISION_1, secinfo, &sddl, &cbSddl);
+	status = ConvertSecurityDescriptorToStringSecurityDescriptorW(psd, SDDL_REVISION_1, secinfo, &sddl, &cbSddl);
 	Error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
 	GlobalFree(pData);
 }
@@ -171,11 +171,12 @@ DWORD SetSddlToBinaryRegistryValue(HKEY hKey, LPWSTR pathRegistryKey, LPWSTR pat
 	status = RegOpenKeyExW(hKey, pathRegistryKey, 0, KEY_WRITE, &hKey);
 	if (debug) { fwprintf(stderr, L"Trying to open key [%s\\%s].\n", pathRegistryKey, pathRegistrySubKey); }
 	Error(L"RegOpenKeyExW KEY_WRITE");
-	ok = ConvertStringSecurityDescriptorToSecurityDescriptorW(sddl, SDDL_REVISION_1, &psd, NULL);
+	LONG cbData = 0;
+	sddl = L"O:SY"; //debug
+	ok = ConvertStringSecurityDescriptorToSecurityDescriptorW(sddl, SDDL_REVISION_1, &psd, &cbData);
 	Error(L"ConvertStringSecurityDescriptorToSecurityDescriptor");
-	DWORD cbData = GetSecurityDescriptorLength(psd);
 	if (debug) { fwprintf(stderr, L"Registry data to be written has size of [%u].\n", cbData); }
-	status = RegSetValueExW(hKey, sValueName, 0, REG_BINARY, &psd, cbData);
+	status = RegSetValueExW(hKey, sValueName, 0, REG_BINARY, psd, cbData);
 	Error(L"RegSetValueExW");
 	RegCloseKey(hKey);
 	Error(L"RegCloseKey");
@@ -296,9 +297,9 @@ int main()
 		GetSetSddlFromToBinaryRegistryValue(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\", pathObject, L"SD");
 	}//if
 
-	if (debug) { fwprintf(stderr, L"Resulting SDDL: ["); }
+	if (debug) { fwprintf(stderr, L"Resulting SDDL: [%s]\n", sddl); }
 	wprintf(L"%s", sddl);
-	if (debug) { fwprintf(stderr, L"]\n"); }
+	
 	if (sddl) {
 		LocalFree(sddl);
 	}//if
