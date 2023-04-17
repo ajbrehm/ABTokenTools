@@ -3,6 +3,8 @@
 #include <sddl.h>
 #include <AclAPI.h>
 
+BOOL debug = TRUE;
+
 LSTATUS status = 0;
 BOOL ok = TRUE;
 LPWSTR pathObject = NULL; // a path to an object
@@ -10,14 +12,14 @@ LPWSTR sddl = NULL; // an sddl for a dacl
 PSECURITY_DESCRIPTOR psd = NULL; // a pointer to a security descriptor
 PACL pdacl = NULL; // a pointer to a DACL
 PSID owner = NULL; // a pointer to an owner
-BOOL debug = TRUE;
 HANDLE handle = NULL; // in case a handle is needed for something
 DWORD pid = 0; // in case a pid is needed
 DWORD result = 0; // store return code
 
 void Help()
 {
-	wprintf(L"AclEdit /type type /object pathObject /pid pid /sddl sddl /inheritance [D:E] /value sRegistryValueName /task pathScheduledTask\n\n");
+	wprintf(L"AclEdit /Type type /Object pathObject /PId pid /SDDL sddl /Inheritance [D:E]\n");
+	wprintf(L" /Value sRegistryValueName /ScheduledTask pathScheduledTask\n\n");
 	wprintf(L"%s\n", L"0\tSE_UNKNOWN_OBJECT_TYPE");
 	wprintf(L"%s\n", L"1\tSE_FILE_OBJECT");
 	wprintf(L"%s\n", L"2\tSE_SERVICE");
@@ -34,6 +36,7 @@ void Help()
 	wprintf(L"%s\n", L"13\tSE_REGISTRY_WOW64_64KEY");
 	wprintf(L"\nCurrently supports setting DACLs and owners. Setting an owner might require the appropriate privilege.\n");
 	wprintf(L"File, service, printer, registry, and share objects take UNC paths, DS_OBJECT takes X.500 format.\n");
+	wprintf(L"Registry hives are CLASSES_ROOT, CONFIG, USER, MACHINE, and USERS.\n\n");
 }
 
 void Error(LPCWSTR sz)
@@ -105,7 +108,7 @@ DWORD GetSetSddlFromToSecurityInfo(int objecttype, LPWSTR sInheritance)
 			}//if
 		}//if
 
-		if (debug) { fwprintf(stderr, L"SDDL given:\t%s\n", sddl); }
+		if (debug) { fwprintf(stderr, L"SDDL given: %s\n", sddl); }
 
 		ok = ConvertStringSecurityDescriptorToSecurityDescriptorW(sddl, SDDL_REVISION_1, &psd, NULL);
 		Error(L"ConvertStringSecurityDescriptorToSecurityDescriptor");
@@ -143,7 +146,7 @@ DWORD GetSetSddlFromToSecurityInfo(int objecttype, LPWSTR sInheritance)
 DWORD GetSddlFromBinaryRegistryValue(HKEY hKey, LPWSTR pathRegistryKey, LPWSTR pathRegistrySubKey, LPWSTR sValueName)
 {
 	status = RegOpenKeyExW(hKey, pathRegistryKey, 0, KEY_READ, &hKey);
-	Error(L"RegOpenKeyExW");
+	Error(L"RegOpenKeyExW KEY_READ");
 	DWORD cbData = 0;
 	if (debug) { fwprintf(stderr, L"Registry value [%s] data has size of [%u].\n", sValueName, cbData); }
 	status = RegGetValueW(hKey, pathRegistrySubKey, sValueName, RRF_RT_REG_BINARY, NULL, NULL, &cbData);
@@ -161,13 +164,13 @@ DWORD GetSddlFromBinaryRegistryValue(HKEY hKey, LPWSTR pathRegistryKey, LPWSTR p
 	status = ConvertSecurityDescriptorToStringSecurityDescriptorW(pSD, SDDL_REVISION_1, secinfo, &sddl, &cbSddl);
 	Error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
 	GlobalFree(pData);
-	if (debug) { fwprintf(stderr, L"sddl is [%s].\n", sddl); }
 }
 
 DWORD SetSddlToBinaryRegistryValue(HKEY hKey, LPWSTR pathRegistryKey, LPWSTR pathRegistrySubKey, LPWSTR sValueName)
 {
 	status = RegOpenKeyExW(hKey, pathRegistryKey, 0, KEY_WRITE, &hKey);
-	Error(L"RegOpenKeyExW");
+	if (debug) { fwprintf(stderr, L"Trying to open key [%s\\%s].\n", pathRegistryKey, pathRegistrySubKey); }
+	Error(L"RegOpenKeyExW KEY_WRITE");
 	ok = ConvertStringSecurityDescriptorToSecurityDescriptorW(sddl, SDDL_REVISION_1, &psd, NULL);
 	Error(L"ConvertStringSecurityDescriptorToSecurityDescriptor");
 	DWORD cbData = GetSecurityDescriptorLength(psd);
@@ -176,8 +179,6 @@ DWORD SetSddlToBinaryRegistryValue(HKEY hKey, LPWSTR pathRegistryKey, LPWSTR pat
 	Error(L"RegSetValueExW");
 	RegCloseKey(hKey);
 	Error(L"RegCloseKey");
-	sddl = NULL;
-	return GetSddlFromBinaryRegistryValue(hKey, pathRegistryKey, pathRegistrySubKey, sValueName);
 }
 
 DWORD GetSetSddlFromToBinaryRegistryValue(HKEY hKey, LPWSTR pathRegistryKey, LPWSTR pathRegistrySubKey, LPWSTR sValueName)
@@ -205,17 +206,19 @@ int main()
 	LPWSTR sInheritance = NULL;
 	LPWSTR sValueName = NULL;
 	LPWSTR pathScheduledTask = NULL;
+	LPWSTR pathRegistryKey = NULL;
+	HKEY hKey = NULL;
 
 	for (int i = 1; i < args; i = i + 2) {
-		if (CSTR_EQUAL == CompareStringEx(NULL, 0, aCommandLine[i], -1, L"/type", 5, NULL, NULL, 0)) {
+		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCommandLine[i], -1, L"/TYPE", 5, NULL, NULL, 0)) {
 			if (i + 1 == args) { Help(); }
 			objecttype = (int)_wtoi(aCommandLine[i + 1]);
 		}//if
-		if (CSTR_EQUAL == CompareStringEx(NULL, 0, aCommandLine[i], -1, L"/object", 7, NULL, NULL, 0)) {
+		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCommandLine[i], -1, L"/OBJECT", 7, NULL, NULL, 0)) {
 			if (i + 1 == args) { Help(); }
 			pathObject = aCommandLine[i + 1];
 		}//if
-		if (CSTR_EQUAL == CompareStringEx(NULL, 0, aCommandLine[i], -1, L"/pid", 4, NULL, NULL, 0)) {
+		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCommandLine[i], -1, L"/PID", 4, NULL, NULL, 0)) {
 			if (i + 1 == args) { Help(); }
 			pid = (int)_wtoi(aCommandLine[i + 1]);
 			if (pid) {
@@ -223,32 +226,32 @@ int main()
 				Error(L"OpenProcess");
 			}//if
 		}//if
-		if (CSTR_EQUAL == CompareStringEx(NULL, 0, aCommandLine[i], -1, L"/sddl", 5, NULL, NULL, 0)) {
+		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCommandLine[i], -1, L"/SDDL", 5, NULL, NULL, 0)) {
 			if (i + 1 == args) { Help(); }
 			sddl = aCommandLine[i + 1];
 		}//if
-		if (CSTR_EQUAL == CompareStringEx(NULL, 0, aCommandLine[i], -1, L"/inheritance", 12, NULL, NULL, 0)) {
+		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCommandLine[i], -1, L"/INHERITANCE", 12, NULL, NULL, 0)) {
 			if (i + 1 == args) { Help(); }
 			sInheritance = aCommandLine[i + 1];
 		}//if
-		if (CSTR_EQUAL == CompareStringEx(NULL, 0, aCommandLine[i], -1, L"/value", 6, NULL, NULL, 0)) {
+		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCommandLine[i], -1, L"/VALUE", 6, NULL, NULL, 0)) {
 			if (i + 1 == args) { Help(); }
 			sValueName = aCommandLine[i + 1];
 		}//if
-		if (CSTR_EQUAL == CompareStringEx(NULL, 0, aCommandLine[i], -1, L"/task", 5, NULL, NULL, 0)) {
+		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCommandLine[i], -1, L"/SCHEDULEDTASK", 14, NULL, NULL, 0)) {
 			if (i + 1 == args) { Help(); }
 			pathScheduledTask = aCommandLine[i + 1];
 		}//if
 	}//for
 
 	if (debug) {
-		wprintf(L"type: [%d]\n", objecttype);
-		wprintf(L"object: [%s]\n", pathObject);
-		wprintf(L"pid: [%d]\n", pid);
-		wprintf(L"sddl: [%s]\n", sddl);
-		wprintf(L"inheritance: [%s]\n", sInheritance);
-		wprintf(L"value: [%s]\n", sValueName);
-		wprintf(L"task: [%s]\n", pathScheduledTask);
+		fwprintf(stderr, L"Type: [%d]\n", objecttype);
+		fwprintf(stderr, L"Object: [%s]\n", pathObject);
+		fwprintf(stderr, L"PId: [%d]\n", pid);
+		fwprintf(stderr, L"SDDL: [%s]\n", sddl);
+		fwprintf(stderr, L"Inheritance: [%s]\n", sInheritance);
+		fwprintf(stderr, L"Value: [%s]\n", sValueName);
+		fwprintf(stderr, L"ScheduledTask: [%s]\n", pathScheduledTask);
 	}//if
 
 	if (objecttype && pathObject) {
@@ -260,15 +263,43 @@ int main()
 	}//if
 
 	if (sValueName && pathObject) {
-		GetSetSddlFromToBinaryRegistryValue(HKEY_LOCAL_MACHINE, pathObject, NULL, sValueName);
+		if (debug) { fwprintf(stderr, L"Path is [%s].\n", pathObject); }
+		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, pathObject, 12, L"CLASSES_ROOT", 12, NULL, NULL, 0)) {
+			hKey = HKEY_LOCAL_MACHINE;
+			pathObject = pathObject + 13;
+			if (debug) { fwprintf(stderr, L"Hive is CLASSES_ROOT.\n"); }
+		}//if
+		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, pathObject, 6, L"CONFIG", 6, NULL, NULL, 0)) {
+			hKey = HKEY_LOCAL_MACHINE;
+			pathObject = pathObject + 7;
+			if (debug) { fwprintf(stderr, L"Hive is CONFIG.\n"); }
+		}//if
+		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, pathObject, 7, L"MACHINE", 7, NULL, NULL, 0)) {
+			hKey = HKEY_LOCAL_MACHINE;
+			pathObject = pathObject + 8;
+			if (debug) { fwprintf(stderr, L"Hive is MACHINE.\n"); }
+		}//if
+		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, pathObject, 4, L"USER", 4, NULL, NULL, 0)) {
+			hKey = HKEY_LOCAL_MACHINE;
+			pathObject = pathObject + 5;
+			if (debug) { fwprintf(stderr, L"Hive is USER.\n"); }
+		}//if
+		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, pathObject, 5, L"USERS", 5, NULL, NULL, 0)) {
+			hKey = HKEY_LOCAL_MACHINE;
+			pathObject = pathObject + 6;
+			if (debug) { fwprintf(stderr, L"Hive is (all) USERS.\n"); }
+		}//if
+		GetSetSddlFromToBinaryRegistryValue(hKey, pathObject, NULL, sValueName);
 	}//if
 
 	if (pathScheduledTask) {
 		GetSetSddlFromToBinaryRegistryValue(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\", pathObject, L"SD");
 	}//if
 
+	if (debug) { fwprintf(stderr, L"Resulting SDDL: ["); }
+	wprintf(L"%s", sddl);
+	if (debug) { fwprintf(stderr, L"]\n"); }
 	if (sddl) {
-		wprintf(L"%s\n", sddl);
 		LocalFree(sddl);
 	}//if
 	if (psd) { LocalFree(psd); }
