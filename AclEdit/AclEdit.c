@@ -4,9 +4,9 @@
 #include <AclAPI.h>
 
 LSTATUS status = 0;
-BOOL ok = FALSE;
+BOOL ok = TRUE;
 LPWSTR pathObject = (LPWSTR)L""; // a path to an object
-LPWSTR sddl; // an sddl for a dacl
+LPWSTR sddl = NULL; // an sddl for a dacl
 PSECURITY_DESCRIPTOR psd = NULL; // a pointer to a security descriptor
 PACL pdacl = NULL; // a pointer to a DACL
 PSID owner = NULL; // a pointer to an owner
@@ -44,10 +44,11 @@ void Error(LPCWSTR sz)
 {
 	if (!debug) { return; }
 	fwprintf(stderr, sz);
-	if ((0 == status) && (ok)) {
+	if (0 != status) { ok = FALSE; }
+	if (ok) {
 		fwprintf(stderr, L"\tOK\n");
-	} else {
-		fwprintf(stderr, L"\t%d\n", GetLastError());
+	} else {		
+		fwprintf(stderr, L"\tSTATUS: [%d], Last Error: [%d]\n", status, GetLastError());
 	}//if
 	status = 0;
 	ok = TRUE;
@@ -91,24 +92,58 @@ DWORD GetSddlFromBinaryRegistryValue(HKEY hKey, LPWSTR pathRegistryKey, LPWSTR p
 	status = RegOpenKeyExW(hKey, pathRegistryKey, 0, KEY_READ, &hKey);
 	Error(L"RegOpenKeyExW");
 	DWORD cbData = 0;
+	if (debug) { fwprintf(stderr, L"Registry value [%s] data has size of [%u].\n", sValueName, cbData); }
 	status = RegGetValueW(hKey, pathRegistrySubKey, sValueName, RRF_RT_REG_BINARY, NULL, NULL, &cbData);
 	Error(L"RegGetValueW");
-	if (debug) { wprintf(L"Registry value [%s] data has size of [%u].\n", sValueName, cbData); }
+	if (debug) { fwprintf(stderr, L"Registry value [%s] data has size of [%u].\n", sValueName, cbData); }
 	PVOID pData = GlobalAlloc(0, cbData);
 	status = RegGetValueW(hKey, pathRegistrySubKey, sValueName, RRF_RT_REG_BINARY, NULL, pData, &cbData);
 	Error(L"RegGetValueW");
 	RegCloseKey(hKey);
+	Error(L"RegCloseKey");
 	PSECURITY_DESCRIPTOR pSD = (PSECURITY_DESCRIPTOR)pData;
 	if (!pSD) { return 1; }
 	DWORD cbSddl = 0;
-	SECURITY_INFORMATION secinfo = DACL_SECURITY_INFORMATION | OWNER_SECURITY_INFORMATION | SACL_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION;
+	SECURITY_INFORMATION secinfo = DACL_SECURITY_INFORMATION | OWNER_SECURITY_INFORMATION;// | SACL_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION;
 	status = ConvertSecurityDescriptorToStringSecurityDescriptorW(pSD, SDDL_REVISION_1, secinfo, &sddl, &cbSddl);
 	Error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
 	GlobalFree(pData);
+	if (debug) { fwprintf(stderr, L"sddl is [%s].\n", sddl); }
+}
+
+DWORD SetSddlToBinaryRegistryValue(HKEY hKey, LPWSTR pathRegistryKey, LPWSTR pathRegistrySubKey, LPWSTR sValueName)
+{
+	status = RegOpenKeyExW(hKey, pathRegistryKey, 0, KEY_WRITE, &hKey);
+	Error(L"RegOpenKeyExW");
+	ok = ConvertStringSecurityDescriptorToSecurityDescriptorW(sddl, SDDL_REVISION_1, &psd, NULL);
+	Error(L"ConvertStringSecurityDescriptorToSecurityDescriptor");
+	DWORD cbData = GetSecurityDescriptorLength(psd);
+	if (debug) { fwprintf(stderr, L"Registry data to be written has size of [%u].\n", cbData); }
+	status = RegSetValueExW(hKey, sValueName, 0, REG_BINARY, &psd, cbData);
+	Error(L"RegSetValueExW");
+	RegCloseKey(hKey);
+	Error(L"RegCloseKey");
+	sddl = NULL;
+	return GetSddlFromBinaryRegistryValue(hKey, pathRegistryKey, pathRegistrySubKey, sValueName);
+}
+
+DWORD GetSetSddlFromToBinaryRegistryValue(HKEY hKey, LPWSTR pathRegistryKey, LPWSTR pathRegistrySubKey, LPWSTR sValueName)
+{
+	if (sddl) {
+		return SetSddlToBinaryRegistryValue(hKey, pathRegistryKey, pathRegistrySubKey, sValueName);
+	} else {
+		return GetSddlFromBinaryRegistryValue(hKey, pathRegistryKey, pathRegistrySubKey, sValueName);
+	}//if
 }
 
 int main()
 {
+	//GetSetSddlToFromBinaryRegistryValue(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\", L"benoit", L"SD");
+	
+	sddl = L"O:BAD:AI(A;OICIIO;FA;;;BA)";
+	GetSetSddlFromToBinaryRegistryValue(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\", L"benoit", L"SD");
+	return 0;
+
 	LPWSTR szCommandLine = GetCommandLineW();
 	int args = 0;
 	LPWSTR* aCommandLine = CommandLineToArgvW(szCommandLine, &args);
@@ -133,13 +168,18 @@ int main()
 		}//if
 	}//if
 
+	LPWSTR s = GlobalAlloc(0, 65536);
+
 	if (objecttype >= 100) {
+		if (args >= 4) {
+			sddl = aCommandLine[3];
+		}//if
 		switch (objecttype)
 		{
 		case 100:
-			GetSddlFromBinaryRegistryValue(HKEY_LOCAL_MACHINE, pathObject, NULL, L"SD");
+			GetSetSddlFromToBinaryRegistryValue(HKEY_LOCAL_MACHINE, pathObject, NULL, L"SD");
 		case 101:
-			GetSddlFromBinaryRegistryValue(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\", pathObject, L"SD");
+			GetSetSddlFromToBinaryRegistryValue(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\", pathObject, L"SD");
 		default:
 			break;
 		}
@@ -187,9 +227,9 @@ int main()
 			Error(L"SetNamedSecurityInfo");
 		}//if
 
-		BOOL tfDaclpresent = FALSE;
+		BOOL tfDaclPresent = FALSE;
 		BOOL tfDaclDefaulted = FALSE;
-		status = GetSecurityDescriptorDacl(psd, &tfDaclpresent, &pdacl, &tfDaclDefaulted);
+		status = GetSecurityDescriptorDacl(psd, &tfDaclPresent, &pdacl, &tfDaclDefaulted);
 		Error(L"GetSecurityDescriptorDacl");
 
 		if (NULL != pdacl) {
