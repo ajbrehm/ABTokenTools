@@ -5,6 +5,7 @@
 
 BOOL debug = TRUE;
 
+BOOL confirm = TRUE;
 LSTATUS status = 0;
 BOOL ok = TRUE;
 LPWSTR pathObject = NULL; // a path to an object
@@ -19,7 +20,7 @@ DWORD result = 0; // store return code
 void Help()
 {
 	wprintf(L"AclEdit /Type type /Object pathObject /PId pid /SDDL sddl /Inheritance [D:E]\n");
-	wprintf(L" /Value sRegistryValueName /ScheduledTask pathScheduledTask\n\n");
+	wprintf(L" /Value sRegistryValueName /ScheduledTask pathScheduledTask /TakeOwnership\n\n");
 	wprintf(L"%s\n", L"0\tSE_UNKNOWN_OBJECT_TYPE");
 	wprintf(L"%s\n", L"1\tSE_FILE_OBJECT");
 	wprintf(L"%s\n", L"2\tSE_SERVICE");
@@ -172,7 +173,6 @@ DWORD SetSddlToBinaryRegistryValue(HKEY hKey, LPWSTR pathRegistryKey, LPWSTR pat
 	if (debug) { fwprintf(stderr, L"Trying to open key [%s\\%s].\n", pathRegistryKey, pathRegistrySubKey); }
 	Error(L"RegOpenKeyExW KEY_WRITE");
 	LONG cbData = 0;
-	sddl = L"O:SY"; //debug
 	ok = ConvertStringSecurityDescriptorToSecurityDescriptorW(sddl, SDDL_REVISION_1, &psd, &cbData);
 	Error(L"ConvertStringSecurityDescriptorToSecurityDescriptor");
 	if (debug) { fwprintf(stderr, L"Registry data to be written has size of [%u].\n", cbData); }
@@ -243,6 +243,9 @@ int main()
 			if (i + 1 == args) { Help(); }
 			pathScheduledTask = aCommandLine[i + 1];
 		}//if
+		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCommandLine[i], -1, L"/TAKEOWNERSHIP", 14, NULL, NULL, 0)) {
+			sddl = L"O:BA";
+		}//if
 	}//for
 
 	if (debug) {
@@ -291,10 +294,14 @@ int main()
 			if (debug) { fwprintf(stderr, L"Hive is (all) USERS.\n"); }
 		}//if
 		GetSetSddlFromToBinaryRegistryValue(hKey, pathObject, NULL, sValueName);
+		sddl = NULL;
+		GetSetSddlFromToBinaryRegistryValue(hKey, pathObject, NULL, sValueName);
 	}//if
 
 	if (pathScheduledTask) {
-		GetSetSddlFromToBinaryRegistryValue(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\", pathObject, L"SD");
+		GetSetSddlFromToBinaryRegistryValue(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree", pathScheduledTask, L"SD");
+		sddl = NULL;
+		GetSetSddlFromToBinaryRegistryValue(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree", pathScheduledTask, L"SD");
 	}//if
 
 	if (debug) { fwprintf(stderr, L"Resulting SDDL: [%s]\n", sddl); }
