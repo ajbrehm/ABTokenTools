@@ -3,7 +3,7 @@
 #include <sddl.h>
 #include <AclAPI.h>
 
-BOOL debug = TRUE;
+BOOL debug = FALSE;
 
 BOOL confirm = TRUE;
 LSTATUS status = 0;
