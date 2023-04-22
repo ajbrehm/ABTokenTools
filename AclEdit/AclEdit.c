@@ -19,7 +19,7 @@ DWORD result = 0; // store return code
 
 void Help()
 {
-	wprintf(L"AclEdit /Type type /Object pathObject /PId pid /SDDL sddl /Inheritance [D:E]\n");
+	wprintf(L"AclEdit /Type type /Object pathObject /PId pid /SDDL sddl /Inheritance D|E\n");
 	wprintf(L" /Value sRegistryValueName /ScheduledTask pathScheduledTask /TakeOwnership\n\n");
 	wprintf(L"%s\n", L"0\tSE_UNKNOWN_OBJECT_TYPE");
 	wprintf(L"%s\n", L"1\tSE_FILE_OBJECT");
