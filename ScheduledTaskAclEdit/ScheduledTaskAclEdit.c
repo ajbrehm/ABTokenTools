@@ -62,11 +62,6 @@ DWORD SetSddlToBinaryRegistryValue(HKEY hKey, LPWSTR pathRegistryKey, LPWSTR pat
 	if (debug) { fwprintf(stderr, L"Registry data to be written has size of [%u].\n", cbData); }
 	status = RegSetValueExW(hKey, sValueName, 0, REG_BINARY, psd, cbData);
 	Error(L"RegSetValueExW");
-
-	LPWSTR foo = L"hello";
-	status = RegSetValueExW(hKey, L"foo", 0, REG_SZ, &foo, 6);
-	Error(L"RegSetValueExW");
-
 	RegCloseKey(hKey);
 	Error(L"RegCloseKey");
 	LocalFree(psd);
