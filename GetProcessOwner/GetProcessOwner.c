@@ -26,7 +26,7 @@
 
 BOOL result;
 DWORD error;
-BOOL debug = TRUE;
+BOOL debug = FALSE;
 
 void Error(LPCWSTR szFunctionName)
 {

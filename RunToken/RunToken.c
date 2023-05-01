@@ -30,7 +30,7 @@
 #define ERRORSIZE 40
 #define SECRETSIZE 100
 
-BOOL debug = 1;
+BOOL debug = FALSE;
 BOOL ok;
 DWORD error;
 

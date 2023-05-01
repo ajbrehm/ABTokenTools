@@ -1,7 +1,7 @@
 #include <Windows.h>
 #include <wchar.h>
 
-BOOL debug = 1;
+BOOL debug = FALSE;
 BOOL ok;
 DWORD error;
 

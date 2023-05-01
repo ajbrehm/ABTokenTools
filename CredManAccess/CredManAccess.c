@@ -6,7 +6,7 @@ BOOL ok;
 int error;
 LPWSTR* aCommandLine;
 int args = 0;
-BOOL debug = TRUE;
+BOOL debug = FALSE;
 
 void ConfigureCommandLine()
 {
