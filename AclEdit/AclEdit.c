@@ -3,24 +3,22 @@
 #include <sddl.h>
 #include <AclAPI.h>
 
-BOOL debug = FALSE;
-
-BOOL confirm = TRUE;
 LSTATUS status = 0;
-BOOL ok = TRUE;
-LPWSTR pathObject = NULL; // a path to an object
-LPWSTR sddl = NULL; // an sddl for a dacl
+BOOL ok = FALSE;
+DWORD error = 0;
+LPWSTR pathObject = (LPWSTR)L""; // a path to an object
+LPWSTR sddl; // an sddl for a dacl
 PSECURITY_DESCRIPTOR psd = NULL; // a pointer to a security descriptor
 PACL pdacl = NULL; // a pointer to a DACL
 PSID owner = NULL; // a pointer to an owner
+BOOL debug = FALSE;
 HANDLE handle = NULL; // in case a handle is needed for something
 DWORD pid = 0; // in case a pid is needed
 DWORD result = 0; // store return code
 
-void Help()
+void help()
 {
-	wprintf(L"AclEdit /Type type /Object pathObject /PId pid /SDDL sddl /Inheritance D|E\n");
-	wprintf(L" /Value sRegistryValueName /ScheduledTask pathScheduledTask /TakeOwnership\n\n");
+	wprintf(L"AclEdit type pathObject [sddl] [D|E]\n\n");
 	wprintf(L"%s\n", L"0\tSE_UNKNOWN_OBJECT_TYPE");
 	wprintf(L"%s\n", L"1\tSE_FILE_OBJECT");
 	wprintf(L"%s\n", L"2\tSE_SERVICE");
@@ -34,22 +32,18 @@ void Help()
 	wprintf(L"%s\n", L"10\tSE_PROVIDER_DEFINED_OBJECT");
 	wprintf(L"%s\n", L"11\tSE_WMIGUID_OBJECT");
 	wprintf(L"%s\n", L"12\tSE_REGISTRY_WOW64_32KEY");
-	wprintf(L"%s\n", L"13\tSE_REGISTRY_WOW64_64KEY");
-	wprintf(L"\nCurrently supports setting DACLs and owners. Setting an owner might require the appropriate privilege.\n");
-	wprintf(L"File, service, printer, registry, and share objects take UNC paths, DS_OBJECT takes X.500 format.\n");
-	wprintf(L"Registry hives are CLASSES_ROOT, CONFIG, USER, MACHINE, and USERS.\n\n");
+	wprintf(L"%s\n", L"13\tSE_REGISTRY_WOW64_64KEY\n");
+	wprintf(L"Currently supports setting DACLs and owners. Setting an owner might require the appropriate privilege.\n");
+	wprintf(L"Disable or enable inheritance with AclEdit type pathObject sddl D|E.\n");
+	wprintf(L"File, service, printer, registry, and share objects take UNC paths, DS_OBJECT takes X.500 format.\n\n");
 }
 
 void Error(LPCWSTR sz)
 {
 	if (!debug) { return; }
-	fwprintf(stderr, sz);
-	if (0 != status) { ok = FALSE; }
-	if (ok) {
-		fwprintf(stderr, L"\tOK\n");
-	} else {		
-		fwprintf(stderr, L"\tSTATUS: [%d], Last Error: [%d]\n", status, GetLastError());
-	}//if
+	error = GetLastError();
+	fwprintf(stderr, L"%s\tOK: [%d]\tSTATUS: [%d], Error: [%d]\n", sz, ok, status, error);
+	error = 0;
 	status = 0;
 	ok = TRUE;
 }
@@ -72,33 +66,56 @@ void EnablePrivilege(LPWSTR sPrivilegeName)
 DWORD GetSecurityInfoWrapper(HANDLE handle, LPWSTR pObjectName, SE_OBJECT_TYPE ObjectType, SECURITY_INFORMATION SecurityInfo, PSID* ppsidOwner, PSID* ppsidGroup, PACL* ppDacl, PACL* ppSacl, PSECURITY_DESCRIPTOR* ppSecurityDescriptor)
 {
 	if (handle) {
-		status = GetSecurityInfo(handle, ObjectType, SecurityInfo, ppsidOwner, ppsidGroup, ppDacl, ppSacl, ppSecurityDescriptor);
-		Error(L"GetSecurityInfo");
+		return GetSecurityInfo(handle, ObjectType, SecurityInfo, ppsidOwner, ppsidGroup, ppDacl, ppSacl, ppSecurityDescriptor);
 	} else {
-		status = GetNamedSecurityInfo(pObjectName, ObjectType, SecurityInfo, ppsidOwner, ppsidGroup, ppDacl, ppSacl, ppSecurityDescriptor);
-		Error(L"GetNamedSecurityInfo");
+		return GetNamedSecurityInfo(pObjectName, ObjectType, SecurityInfo, ppsidOwner, ppsidGroup, ppDacl, ppSacl, ppSecurityDescriptor);
 	}//if
 }
 
 DWORD SetSecurityInfoWrapper(HANDLE handle, LPWSTR pObjectName, SE_OBJECT_TYPE ObjectType, SECURITY_INFORMATION SecurityInfo, PSID psidOwner, PSID psidGroup, PACL pDacl, PACL pSacl)
 {
 	if (handle) {
-		status = SetSecurityInfo(handle, ObjectType, SecurityInfo, psidOwner, psidGroup, pDacl, pSacl);
-		Error(L"SetSecurityInfo");
+		return SetSecurityInfo(handle, ObjectType, SecurityInfo, psidOwner, psidGroup, pDacl, pSacl);
 	} else {
-		status = SetNamedSecurityInfo(pObjectName, ObjectType, SecurityInfo, psidOwner, psidGroup, pDacl, pSacl);
-		Error(L"SetNamedSecurityInfo");
+		return SetNamedSecurityInfo(pObjectName, ObjectType, SecurityInfo, psidOwner, psidGroup, pDacl, pSacl);
 	}//if
 }
 
-DWORD GetSetSddlFromToSecurityInfo(int objecttype, LPWSTR sInheritance)
+int main()
 {
+
+	LPWSTR szCommandLine = GetCommandLineW();
+	int args = 0;
+	LPWSTR* aCommandLine = CommandLineToArgvW(szCommandLine, &args);
+
+	if (args < 3) {
+		help();
+		exit(0);
+	}//if
+
+	int objecttype = 0;
+	LPWSTR sObjectType = aCommandLine[1];
+	objecttype = (int)_wtoi(sObjectType);
+	Error(L"_wtoi");
+
+	pathObject = aCommandLine[2];
+
+	DWORD pid = 0;
+	if (SE_KERNEL_OBJECT == objecttype) {
+		pid = (int)_wtoi(pathObject);
+		if (pid) {
+			handle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
+		}//if
+	}//if
+
 	SECURITY_INFORMATION DACL_AND_OWNER_SECURITY_INFORMATION = DACL_SECURITY_INFORMATION | OWNER_SECURITY_INFORMATION;
 	SECURITY_INFORMATION DACL_SECURITY_INFORMATION_AND_THEN_SOME = DACL_SECURITY_INFORMATION;
 
-	if (sddl) {
+	if (args >= 4) {
 
-		if (sInheritance) {
+		if (5 == args) {
+
+			LPWSTR sInheritance = aCommandLine[4];
 			if (0 == wcscmp(L"D", sInheritance)) {
 				if (debug) { fwprintf(stderr, L"Disabling inheritance.\n"); }
 				DACL_SECURITY_INFORMATION_AND_THEN_SOME = DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION;
@@ -107,11 +124,13 @@ DWORD GetSetSddlFromToSecurityInfo(int objecttype, LPWSTR sInheritance)
 				DACL_SECURITY_INFORMATION_AND_THEN_SOME = DACL_SECURITY_INFORMATION | UNPROTECTED_DACL_SECURITY_INFORMATION;
 				if (debug) { fwprintf(stderr, L"Enabling inheritance.\n"); }
 			}//if
+
 		}//if
 
-		if (debug) { fwprintf(stderr, L"SDDL given: %s\n", sddl); }
+		sddl = aCommandLine[3];
+		if (debug) { fwprintf(stderr, L"SDDL given:\t%s\n", sddl); }
 
-		ok = ConvertStringSecurityDescriptorToSecurityDescriptorW(sddl, SDDL_REVISION_1, &psd, NULL);
+		ok = ConvertStringSecurityDescriptorToSecurityDescriptor(sddl, SDDL_REVISION_1, &psd, NULL);
 		Error(L"ConvertStringSecurityDescriptorToSecurityDescriptor");
 
 		BOOL tfOwnerDefaulted = FALSE;
@@ -126,9 +145,9 @@ DWORD GetSetSddlFromToSecurityInfo(int objecttype, LPWSTR sInheritance)
 			Error(L"SetNamedSecurityInfo");
 		}//if
 
-		BOOL tfDaclPresent = FALSE;
+		BOOL tfDaclpresent = FALSE;
 		BOOL tfDaclDefaulted = FALSE;
-		status = GetSecurityDescriptorDacl(psd, &tfDaclPresent, &pdacl, &tfDaclDefaulted);
+		status = GetSecurityDescriptorDacl(psd, &tfDaclpresent, &pdacl, &tfDaclDefaulted);
 		Error(L"GetSecurityDescriptorDacl");
 
 		if (NULL != pdacl) {
@@ -140,131 +159,17 @@ DWORD GetSetSddlFromToSecurityInfo(int objecttype, LPWSTR sInheritance)
 	}//if
 
 	status = GetSecurityInfoWrapper(handle, pathObject, (SE_OBJECT_TYPE)objecttype, DACL_AND_OWNER_SECURITY_INFORMATION, NULL, NULL, NULL, NULL, &psd);
+	Error(L"GetNamedSecurityInfo");
 	ok = ConvertSecurityDescriptorToStringSecurityDescriptor(psd, SDDL_REVISION_1, DACL_AND_OWNER_SECURITY_INFORMATION, &sddl, NULL);
 	Error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
-}
-
-int main()
-{
-	LPWSTR szCommandLine = GetCommandLineW();
-	int args = 0;
-	LPWSTR* aCommandLine = CommandLineToArgvW(szCommandLine, &args);
-
-	if (args < 3) {
-		Help();
-		exit(0);
-	}//if
-
-	int objecttype = 0;
-	DWORD pid = 0;
-	LPWSTR sInheritance = NULL;
-	LPWSTR sValueName = NULL;
-	LPWSTR pathScheduledTask = NULL;
-	LPWSTR pathRegistryKey = NULL;
-	HKEY hKey = NULL;
-
-	for (int i = 1; i < args; i = i + 2) {
-		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCommandLine[i], -1, L"/TYPE", 5, NULL, NULL, 0)) {
-			if (i + 1 == args) { Help(); }
-			objecttype = (int)_wtoi(aCommandLine[i + 1]);
-		}//if
-		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCommandLine[i], -1, L"/OBJECT", 7, NULL, NULL, 0)) {
-			if (i + 1 == args) { Help(); }
-			pathObject = aCommandLine[i + 1];
-		}//if
-		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCommandLine[i], -1, L"/PID", 4, NULL, NULL, 0)) {
-			if (i + 1 == args) { Help(); }
-			pid = (int)_wtoi(aCommandLine[i + 1]);
-			if (pid) {
-				handle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
-				Error(L"OpenProcess");
-			}//if
-		}//if
-		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCommandLine[i], -1, L"/SDDL", 5, NULL, NULL, 0)) {
-			if (i + 1 == args) { Help(); }
-			sddl = aCommandLine[i + 1];
-		}//if
-		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCommandLine[i], -1, L"/INHERITANCE", 12, NULL, NULL, 0)) {
-			if (i + 1 == args) { Help(); }
-			sInheritance = aCommandLine[i + 1];
-		}//if
-		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCommandLine[i], -1, L"/VALUE", 6, NULL, NULL, 0)) {
-			if (i + 1 == args) { Help(); }
-			sValueName = aCommandLine[i + 1];
-		}//if
-		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCommandLine[i], -1, L"/SCHEDULEDTASK", 14, NULL, NULL, 0)) {
-			if (i + 1 == args) { Help(); }
-			pathScheduledTask = aCommandLine[i + 1];
-		}//if
-		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCommandLine[i], -1, L"/TAKEOWNERSHIP", 14, NULL, NULL, 0)) {
-			sddl = L"O:BA";
-		}//if
-	}//for
-
-	if (debug) {
-		fwprintf(stderr, L"Type: [%d]\n", objecttype);
-		fwprintf(stderr, L"Object: [%s]\n", pathObject);
-		fwprintf(stderr, L"PId: [%d]\n", pid);
-		fwprintf(stderr, L"SDDL: [%s]\n", sddl);
-		fwprintf(stderr, L"Inheritance: [%s]\n", sInheritance);
-		fwprintf(stderr, L"Value: [%s]\n", sValueName);
-		fwprintf(stderr, L"ScheduledTask: [%s]\n", pathScheduledTask);
-	}//if
-
-	if (objecttype && pathObject) {
-		GetSetSddlFromToSecurityInfo(objecttype, sInheritance);
-	}//if
+	wprintf(L"%s\n", sddl);
+	LocalFree(sddl);
+	LocalFree(psd);
 
 	if (pid) {
-		GetSetSddlFromToSecurityInfo(SE_KERNEL_OBJECT, sInheritance);
+		CloseHandle(handle);
 	}//if
-
-	if (sValueName && pathObject) {
-		if (debug) { fwprintf(stderr, L"Path is [%s].\n", pathObject); }
-		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, pathObject, 12, L"CLASSES_ROOT", 12, NULL, NULL, 0)) {
-			hKey = HKEY_LOCAL_MACHINE;
-			pathObject = pathObject + 13;
-			if (debug) { fwprintf(stderr, L"Hive is CLASSES_ROOT.\n"); }
-		}//if
-		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, pathObject, 6, L"CONFIG", 6, NULL, NULL, 0)) {
-			hKey = HKEY_LOCAL_MACHINE;
-			pathObject = pathObject + 7;
-			if (debug) { fwprintf(stderr, L"Hive is CONFIG.\n"); }
-		}//if
-		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, pathObject, 7, L"MACHINE", 7, NULL, NULL, 0)) {
-			hKey = HKEY_LOCAL_MACHINE;
-			pathObject = pathObject + 8;
-			if (debug) { fwprintf(stderr, L"Hive is MACHINE.\n"); }
-		}//if
-		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, pathObject, 4, L"USER", 4, NULL, NULL, 0)) {
-			hKey = HKEY_LOCAL_MACHINE;
-			pathObject = pathObject + 5;
-			if (debug) { fwprintf(stderr, L"Hive is USER.\n"); }
-		}//if
-		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, pathObject, 5, L"USERS", 5, NULL, NULL, 0)) {
-			hKey = HKEY_LOCAL_MACHINE;
-			pathObject = pathObject + 6;
-			if (debug) { fwprintf(stderr, L"Hive is (all) USERS.\n"); }
-		}//if
-		GetSetSddlFromToBinaryRegistryValue(hKey, pathObject, NULL, sValueName);
-		sddl = NULL;
-		GetSetSddlFromToBinaryRegistryValue(hKey, pathObject, NULL, sValueName);
-	}//if
-
-	if (pathScheduledTask) {
-		GetSetSddlFromToBinaryRegistryValue(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree", pathScheduledTask, L"SD");
-		sddl = NULL;
-		GetSetSddlFromToBinaryRegistryValue(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree", pathScheduledTask, L"SD");
-	}//if
-
-	if (debug) { fwprintf(stderr, L"Resulting SDDL: [%s]\n", sddl); }
-	wprintf(L"%s", sddl);
-	
-	if (sddl) {
-		LocalFree(sddl);
-	}//if
-	if (psd) { LocalFree(psd); }
-	if (pid) { CloseHandle(handle); }
 
 	return result;
+
 }
