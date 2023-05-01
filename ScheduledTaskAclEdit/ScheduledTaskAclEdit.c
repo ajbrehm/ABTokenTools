@@ -12,7 +12,7 @@ PSECURITY_DESCRIPTOR psd = NULL; // a pointer to a security descriptor
 
 void Help()
 {
-	wprintf(L"ScheduledTaskAclEdit pathScheduledTask sddl\n\n");
+	wprintf(L"ScheduledTaskAclEdit pathScheduledTask [sddl]\n\n");
 	wprintf(L"pathScheduledTask can be a scheduled task or a folder of scheduled tasks.\n\n");
 }
 

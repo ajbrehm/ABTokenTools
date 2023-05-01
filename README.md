@@ -122,10 +122,24 @@ Starts a program pathImage or modifies the settings of a running process with pi
 
 This is a proof-of-concept and not of much practical use.
 
+# RunToken
+
+**RunToken pid pathImage [sArguments]**
+
+Starts a program pathImage with possible arguments sArguments using the token of the process with the PId pid. 
+
+This is not always possible.
+
 
 # S4ULogon
 
 Logs a user on without a password and does nothing. To be honest, I have forgotten what this was good for other than a proof of concept…
+
+# ScheduledTaskAclEdit
+
+**ScheduledTaskAclEdit pathScheduledTask [sddl]**
+
+Displays or set the security descriptor for the scheduled task or folder of scheduled tasks pathScheduledTask.
 
 
 # SessionForPId
