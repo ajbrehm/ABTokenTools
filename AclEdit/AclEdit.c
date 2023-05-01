@@ -5,6 +5,7 @@
 
 LSTATUS status = 0;
 BOOL ok = FALSE;
+DWORD error = 0;
 LPWSTR pathObject = (LPWSTR)L""; // a path to an object
 LPWSTR sddl; // an sddl for a dacl
 PSECURITY_DESCRIPTOR psd = NULL; // a pointer to a security descriptor
@@ -37,15 +38,12 @@ void help()
 	wprintf(L"File, service, printer, registry, and share objects take UNC paths, DS_OBJECT takes X.500 format.\n\n");
 }
 
-void error(LPCWSTR sz)
+void Error(LPCWSTR sz)
 {
 	if (!debug) { return; }
-	fwprintf(stderr, sz);
-	if ((0 == status) || (!ok)) {
-		fwprintf(stderr, L"\tOK\n");
-	} else {
-		fwprintf(stderr, L"\t%d\n", status);
-	}//if
+	error = GetLastError();
+	fwprintf(stderr, L"%s\tOK: [%d]\tSTATUS: [%d], Error: [%d]\n", sz, ok, status, error);
+	error = 0;
 	status = 0;
 	ok = TRUE;
 }
@@ -57,12 +55,12 @@ void EnablePrivilege(LPWSTR sPrivilegeName)
 	TOKEN_PRIVILEGES privs;
 	LUID luid;
 	ok = LookupPrivilegeValue(NULL, sPrivilegeName, &luid);
-	error(L"LookupPrivilegeValue");
+	Error(L"LookupPrivilegeValue");
 	privs.PrivilegeCount = 1;
 	privs.Privileges[0].Luid = luid;
 	privs.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
 	ok = AdjustTokenPrivileges(hCurrentProcessToken, FALSE, &privs, sizeof(TOKEN_PRIVILEGES), NULL, NULL);
-	error(L"AdjustTokenPrivileges");
+	Error(L"AdjustTokenPrivileges");
 }
 
 DWORD GetSecurityInfoWrapper(HANDLE handle, LPWSTR pObjectName, SE_OBJECT_TYPE ObjectType, SECURITY_INFORMATION SecurityInfo, PSID* ppsidOwner, PSID* ppsidGroup, PACL* ppDacl, PACL* ppSacl, PSECURITY_DESCRIPTOR* ppSecurityDescriptor)
@@ -98,7 +96,7 @@ int main()
 	int objecttype = 0;
 	LPWSTR sObjectType = aCommandLine[1];
 	objecttype = (int)_wtoi(sObjectType);
-	error(L"_wtoi");
+	Error(L"_wtoi");
 
 	pathObject = aCommandLine[2];
 
@@ -119,7 +117,7 @@ int main()
 
 			LPWSTR sInheritance = aCommandLine[4];
 			if (0 == wcscmp(L"D", sInheritance)) {
-				if (debug) {fwprintf(stderr, L"Disabling inheritance.\n");}
+				if (debug) { fwprintf(stderr, L"Disabling inheritance.\n"); }
 				DACL_SECURITY_INFORMATION_AND_THEN_SOME = DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION;
 			}//if
 			if (0 == wcscmp(L"E", sInheritance)) {
@@ -133,37 +131,37 @@ int main()
 		if (debug) { fwprintf(stderr, L"SDDL given:\t%s\n", sddl); }
 
 		ok = ConvertStringSecurityDescriptorToSecurityDescriptor(sddl, SDDL_REVISION_1, &psd, NULL);
-		error(L"ConvertStringSecurityDescriptorToSecurityDescriptor");
+		Error(L"ConvertStringSecurityDescriptorToSecurityDescriptor");
 
 		BOOL tfOwnerDefaulted = FALSE;
 		status = GetSecurityDescriptorOwner(psd, &owner, &tfOwnerDefaulted);
-		error(L"GetSecurityDescriptorOwner");
+		Error(L"GetSecurityDescriptorOwner");
 
 		if (NULL != owner) {
 			EnablePrivilege(L"SeRestorePrivilege");
 			EnablePrivilege(L"SeTakeOwnershipPrivilege");
 			status = SetSecurityInfoWrapper(handle, pathObject, (SE_OBJECT_TYPE)objecttype, OWNER_SECURITY_INFORMATION, owner, NULL, NULL, NULL);
 			result = status;
-			error(L"SetNamedSecurityInfo");
+			Error(L"SetNamedSecurityInfo");
 		}//if
 
 		BOOL tfDaclpresent = FALSE;
 		BOOL tfDaclDefaulted = FALSE;
 		status = GetSecurityDescriptorDacl(psd, &tfDaclpresent, &pdacl, &tfDaclDefaulted);
-		error(L"GetSecurityDescriptorDacl");
+		Error(L"GetSecurityDescriptorDacl");
 
 		if (NULL != pdacl) {
 			status = SetSecurityInfoWrapper(handle, pathObject, (SE_OBJECT_TYPE)objecttype, DACL_SECURITY_INFORMATION_AND_THEN_SOME, NULL, NULL, pdacl, NULL);
 			result = status;
-			error(L"SetNamedSecurityInfo");
+			Error(L"SetNamedSecurityInfo");
 		}//if
 
 	}//if
-	
+
 	status = GetSecurityInfoWrapper(handle, pathObject, (SE_OBJECT_TYPE)objecttype, DACL_AND_OWNER_SECURITY_INFORMATION, NULL, NULL, NULL, NULL, &psd);
-	error(L"GetNamedSecurityInfo");
+	Error(L"GetNamedSecurityInfo");
 	ok = ConvertSecurityDescriptorToStringSecurityDescriptor(psd, SDDL_REVISION_1, DACL_AND_OWNER_SECURITY_INFORMATION, &sddl, NULL);
-	error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
+	Error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
 	wprintf(L"%s\n", sddl);
 	LocalFree(sddl);
 	LocalFree(psd);
@@ -173,7 +171,5 @@ int main()
 	}//if
 
 	return result;
-
-
 
 }
