@@ -144,53 +144,6 @@ DWORD GetSetSddlFromToSecurityInfo(int objecttype, LPWSTR sInheritance)
 	Error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
 }
 
-DWORD GetSddlFromBinaryRegistryValue(HKEY hKey, LPWSTR pathRegistryKey, LPWSTR pathRegistrySubKey, LPWSTR sValueName)
-{
-	status = RegOpenKeyExW(hKey, pathRegistryKey, 0, KEY_READ, &hKey);
-	Error(L"RegOpenKeyExW KEY_READ");
-	DWORD cbData = 0;
-	if (debug) { fwprintf(stderr, L"Registry value [%s] data has size of [%u].\n", sValueName, cbData); }
-	status = RegGetValueW(hKey, pathRegistrySubKey, sValueName, RRF_RT_REG_BINARY, NULL, NULL, &cbData);
-	Error(L"RegGetValueW");
-	if (debug) { fwprintf(stderr, L"Registry value [%s] data has size of [%u].\n", sValueName, cbData); }
-	PVOID pData = GlobalAlloc(0, cbData);
-	status = RegGetValueW(hKey, pathRegistrySubKey, sValueName, RRF_RT_REG_BINARY, NULL, pData, &cbData);
-	Error(L"RegGetValueW");
-	RegCloseKey(hKey);
-	Error(L"RegCloseKey");
-	psd = (PSECURITY_DESCRIPTOR)pData;
-	if (!psd) { return 1; }
-	DWORD cbSddl = 0;
-	SECURITY_INFORMATION secinfo = DACL_SECURITY_INFORMATION | OWNER_SECURITY_INFORMATION;// | SACL_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION;
-	status = ConvertSecurityDescriptorToStringSecurityDescriptorW(psd, SDDL_REVISION_1, secinfo, &sddl, &cbSddl);
-	Error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
-	GlobalFree(pData);
-}
-
-DWORD SetSddlToBinaryRegistryValue(HKEY hKey, LPWSTR pathRegistryKey, LPWSTR pathRegistrySubKey, LPWSTR sValueName)
-{
-	status = RegOpenKeyExW(hKey, pathRegistryKey, 0, KEY_WRITE, &hKey);
-	if (debug) { fwprintf(stderr, L"Trying to open key [%s\\%s].\n", pathRegistryKey, pathRegistrySubKey); }
-	Error(L"RegOpenKeyExW KEY_WRITE");
-	LONG cbData = 0;
-	ok = ConvertStringSecurityDescriptorToSecurityDescriptorW(sddl, SDDL_REVISION_1, &psd, &cbData);
-	Error(L"ConvertStringSecurityDescriptorToSecurityDescriptor");
-	if (debug) { fwprintf(stderr, L"Registry data to be written has size of [%u].\n", cbData); }
-	status = RegSetValueExW(hKey, sValueName, 0, REG_BINARY, psd, cbData);
-	Error(L"RegSetValueExW");
-	RegCloseKey(hKey);
-	Error(L"RegCloseKey");
-}
-
-DWORD GetSetSddlFromToBinaryRegistryValue(HKEY hKey, LPWSTR pathRegistryKey, LPWSTR pathRegistrySubKey, LPWSTR sValueName)
-{
-	if (sddl) {
-		return SetSddlToBinaryRegistryValue(hKey, pathRegistryKey, pathRegistrySubKey, sValueName);
-	} else {
-		return GetSddlFromBinaryRegistryValue(hKey, pathRegistryKey, pathRegistrySubKey, sValueName);
-	}//if
-}
-
 int main()
 {
 	LPWSTR szCommandLine = GetCommandLineW();
