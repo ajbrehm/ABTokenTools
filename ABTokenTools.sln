@@ -34,9 +34,8 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RunToken", "RunToken\RunToken.vcxproj", "{9652F38D-84E2-4878-A7E0-2C3457C4226B}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{587E917F-535C-421D-958A-D19941C999E3}"
-	ProjectSection(SolutionItems) = preProject
-		README.md = README.md
-	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ABTokenTools", "ABTokenTools\ABTokenTools.vcxproj", "{2B9265CA-C527-4201-940F-309647BA53EC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -286,6 +285,22 @@ Global
 		{9652F38D-84E2-4878-A7E0-2C3457C4226B}.Release|Win32.Build.0 = Release|Win32
 		{9652F38D-84E2-4878-A7E0-2C3457C4226B}.Release|x64.ActiveCfg = Release|x64
 		{9652F38D-84E2-4878-A7E0-2C3457C4226B}.Release|x64.Build.0 = Release|x64
+		{2B9265CA-C527-4201-940F-309647BA53EC}.Debug|ARM.ActiveCfg = Debug|x64
+		{2B9265CA-C527-4201-940F-309647BA53EC}.Debug|ARM.Build.0 = Debug|x64
+		{2B9265CA-C527-4201-940F-309647BA53EC}.Debug|ARM64.ActiveCfg = Debug|x64
+		{2B9265CA-C527-4201-940F-309647BA53EC}.Debug|ARM64.Build.0 = Debug|x64
+		{2B9265CA-C527-4201-940F-309647BA53EC}.Debug|Win32.ActiveCfg = Debug|Win32
+		{2B9265CA-C527-4201-940F-309647BA53EC}.Debug|Win32.Build.0 = Debug|Win32
+		{2B9265CA-C527-4201-940F-309647BA53EC}.Debug|x64.ActiveCfg = Debug|x64
+		{2B9265CA-C527-4201-940F-309647BA53EC}.Debug|x64.Build.0 = Debug|x64
+		{2B9265CA-C527-4201-940F-309647BA53EC}.Release|ARM.ActiveCfg = Release|x64
+		{2B9265CA-C527-4201-940F-309647BA53EC}.Release|ARM.Build.0 = Release|x64
+		{2B9265CA-C527-4201-940F-309647BA53EC}.Release|ARM64.ActiveCfg = Release|x64
+		{2B9265CA-C527-4201-940F-309647BA53EC}.Release|ARM64.Build.0 = Release|x64
+		{2B9265CA-C527-4201-940F-309647BA53EC}.Release|Win32.ActiveCfg = Release|Win32
+		{2B9265CA-C527-4201-940F-309647BA53EC}.Release|Win32.Build.0 = Release|Win32
+		{2B9265CA-C527-4201-940F-309647BA53EC}.Release|x64.ActiveCfg = Release|x64
+		{2B9265CA-C527-4201-940F-309647BA53EC}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
