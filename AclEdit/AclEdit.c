@@ -37,13 +37,13 @@ void help()
 	wprintf(L"Disable or enable inheritance with AclEdit type pathObject sddl D|E.\n");
 	wprintf(L"File, service, printer, registry, and share objects take UNC paths, DS_OBJECT takes X.500 format.\n");
 	wprintf(L"\"6 pid\" will display ACL of process with id pid\n");
-	wprintf(L"\"7 WindowStation\" will display permissions of AclEdit's (session's) Window Station.\n\n");
+	wprintf(L"\"7 sName\" will display permissions of the current session' window object sName.\n\n");
 }
 
 void Error(LPCWSTR sz)
 {
 	if (!debug) { return; }
-	error = GetLastError();
+	if (!ok || status) { error = GetLastError(); }
 	fwprintf(stderr, L"%s\tOK: [%d]\tSTATUS: [%d], Error: [%d]\n", sz, ok, status, error);
 	error = 0;
 	status = 0;
@@ -114,9 +114,13 @@ int main()
 		}//if
 	}//if
 
-	if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCommandLine[2], -1, L"WindowStation", 13, NULL, NULL, 0)) {
-		handle = GetProcessWindowStation();
-		Error(L"GetProcessWindowStation");
+	if (SE_WINDOW_OBJECT == objecttype) {
+		handle = OpenWindowStationW(pathObject, FALSE, GENERIC_ALL);
+		Error(L"OpenWindowStationW");
+		if (NULL == handle) {
+			handle = OpenDesktopW(pathObject, 0, FALSE, GENERIC_ALL);
+			Error(L"OpenDesktopW");
+		}//if
 	}//if
 
 	SECURITY_INFORMATION DACL_AND_OWNER_SECURITY_INFORMATION = DACL_SECURITY_INFORMATION | OWNER_SECURITY_INFORMATION;
