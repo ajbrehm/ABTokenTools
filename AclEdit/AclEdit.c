@@ -35,7 +35,9 @@ void help()
 	wprintf(L"%s\n", L"13\tSE_REGISTRY_WOW64_64KEY\n");
 	wprintf(L"Currently supports setting DACLs and owners. Setting an owner might require the appropriate privilege.\n");
 	wprintf(L"Disable or enable inheritance with AclEdit type pathObject sddl D|E.\n");
-	wprintf(L"File, service, printer, registry, and share objects take UNC paths, DS_OBJECT takes X.500 format.\n\n");
+	wprintf(L"File, service, printer, registry, and share objects take UNC paths, DS_OBJECT takes X.500 format.\n");
+	wprintf(L"\"6 pid\" will display ACL of process with id pid\n");
+	wprintf(L"\"7 WindowStation\" will display permissions of AclEdit's (session's) Window Station.\n\n");
 }
 
 void Error(LPCWSTR sz)
@@ -63,21 +65,25 @@ void EnablePrivilege(LPWSTR sPrivilegeName)
 	Error(L"AdjustTokenPrivileges");
 }
 
-DWORD GetSecurityInfoWrapper(HANDLE handle, LPWSTR pObjectName, SE_OBJECT_TYPE ObjectType, SECURITY_INFORMATION SecurityInfo, PSID* ppsidOwner, PSID* ppsidGroup, PACL* ppDacl, PACL* ppSacl, PSECURITY_DESCRIPTOR* ppSecurityDescriptor)
+void GetSecurityInfoWrapper(HANDLE handle, LPWSTR pObjectName, SE_OBJECT_TYPE ObjectType, SECURITY_INFORMATION SecurityInfo, PSID* ppsidOwner, PSID* ppsidGroup, PACL* ppDacl, PACL* ppSacl, PSECURITY_DESCRIPTOR* ppSecurityDescriptor)
 {
 	if (handle) {
-		return GetSecurityInfo(handle, ObjectType, SecurityInfo, ppsidOwner, ppsidGroup, ppDacl, ppSacl, ppSecurityDescriptor);
+		status = GetSecurityInfo(handle, ObjectType, SecurityInfo, ppsidOwner, ppsidGroup, ppDacl, ppSacl, ppSecurityDescriptor);
+		Error(L"GetSecurityInfo");
 	} else {
-		return GetNamedSecurityInfo(pObjectName, ObjectType, SecurityInfo, ppsidOwner, ppsidGroup, ppDacl, ppSacl, ppSecurityDescriptor);
+		status = GetNamedSecurityInfo(pObjectName, ObjectType, SecurityInfo, ppsidOwner, ppsidGroup, ppDacl, ppSacl, ppSecurityDescriptor);
+		Error(L"GetNamedSecurityInfo");
 	}//if
 }
 
-DWORD SetSecurityInfoWrapper(HANDLE handle, LPWSTR pObjectName, SE_OBJECT_TYPE ObjectType, SECURITY_INFORMATION SecurityInfo, PSID psidOwner, PSID psidGroup, PACL pDacl, PACL pSacl)
+void SetSecurityInfoWrapper(HANDLE handle, LPWSTR pObjectName, SE_OBJECT_TYPE ObjectType, SECURITY_INFORMATION SecurityInfo, PSID psidOwner, PSID psidGroup, PACL pDacl, PACL pSacl)
 {
 	if (handle) {
-		return SetSecurityInfo(handle, ObjectType, SecurityInfo, psidOwner, psidGroup, pDacl, pSacl);
+		status = SetSecurityInfo(handle, ObjectType, SecurityInfo, psidOwner, psidGroup, pDacl, pSacl);
+		Error(L"SetSecurityInfo");
 	} else {
-		return SetNamedSecurityInfo(pObjectName, ObjectType, SecurityInfo, psidOwner, psidGroup, pDacl, pSacl);
+		status = SetNamedSecurityInfo(pObjectName, ObjectType, SecurityInfo, psidOwner, psidGroup, pDacl, pSacl);
+		Error(L"SetNamedSecurityInfo");
 	}//if
 }
 
@@ -106,6 +112,11 @@ int main()
 		if (pid) {
 			handle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
 		}//if
+	}//if
+
+	if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCommandLine[2], -1, L"WindowStation", 13, NULL, NULL, 0)) {
+		handle = GetProcessWindowStation();
+		Error(L"GetProcessWindowStation");
 	}//if
 
 	SECURITY_INFORMATION DACL_AND_OWNER_SECURITY_INFORMATION = DACL_SECURITY_INFORMATION | OWNER_SECURITY_INFORMATION;
@@ -140,9 +151,7 @@ int main()
 		if (NULL != owner) {
 			EnablePrivilege(L"SeRestorePrivilege");
 			EnablePrivilege(L"SeTakeOwnershipPrivilege");
-			status = SetSecurityInfoWrapper(handle, pathObject, (SE_OBJECT_TYPE)objecttype, OWNER_SECURITY_INFORMATION, owner, NULL, NULL, NULL);
-			result = status;
-			Error(L"SetNamedSecurityInfo");
+			SetSecurityInfoWrapper(handle, pathObject, (SE_OBJECT_TYPE)objecttype, OWNER_SECURITY_INFORMATION, owner, NULL, NULL, NULL);
 		}//if
 
 		BOOL tfDaclpresent = FALSE;
@@ -151,15 +160,12 @@ int main()
 		Error(L"GetSecurityDescriptorDacl");
 
 		if (NULL != pdacl) {
-			status = SetSecurityInfoWrapper(handle, pathObject, (SE_OBJECT_TYPE)objecttype, DACL_SECURITY_INFORMATION_AND_THEN_SOME, NULL, NULL, pdacl, NULL);
-			result = status;
-			Error(L"SetNamedSecurityInfo");
+			SetSecurityInfoWrapper(handle, pathObject, (SE_OBJECT_TYPE)objecttype, DACL_SECURITY_INFORMATION_AND_THEN_SOME, NULL, NULL, pdacl, NULL);
 		}//if
 
 	}//if
 
-	status = GetSecurityInfoWrapper(handle, pathObject, (SE_OBJECT_TYPE)objecttype, DACL_AND_OWNER_SECURITY_INFORMATION, NULL, NULL, NULL, NULL, &psd);
-	Error(L"GetNamedSecurityInfo");
+	GetSecurityInfoWrapper(handle, pathObject, (SE_OBJECT_TYPE)objecttype, DACL_AND_OWNER_SECURITY_INFORMATION, NULL, NULL, NULL, NULL, &psd);
 	ok = ConvertSecurityDescriptorToStringSecurityDescriptor(psd, SDDL_REVISION_1, DACL_AND_OWNER_SECURITY_INFORMATION, &sddl, NULL);
 	Error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
 	wprintf(L"%s\n", sddl);
