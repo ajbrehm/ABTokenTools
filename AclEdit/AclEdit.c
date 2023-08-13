@@ -37,7 +37,7 @@ void help()
 	wprintf(L"Disable or enable inheritance with AclEdit type pathObject sddl D|E.\n");
 	wprintf(L"File, service, printer, registry, and share objects take UNC paths, DS_OBJECT takes X.500 format.\n");
 	wprintf(L"\"6 pid\" will display ACL of process with id pid\n");
-	wprintf(L"\"7 sName\" will display permissions of the current session' window object sName.\n\n");
+	wprintf(L"\"7 Winsta0|Default\" will display permissions of the current session's WinSta0 or Default desktop.\n\n");
 }
 
 void Error(LPCWSTR sz)
