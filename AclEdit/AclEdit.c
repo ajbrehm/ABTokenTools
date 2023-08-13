@@ -2,6 +2,7 @@
 #include <wchar.h>
 #include <sddl.h>
 #include <AclAPI.h>
+#include <winternl.h>
 
 LSTATUS status = 0;
 BOOL ok = FALSE;
@@ -11,7 +12,7 @@ LPWSTR sddl; // an sddl for a dacl
 PSECURITY_DESCRIPTOR psd = NULL; // a pointer to a security descriptor
 PACL pdacl = NULL; // a pointer to a DACL
 PSID owner = NULL; // a pointer to an owner
-BOOL debug = FALSE;
+BOOL debug = TRUE;
 HANDLE handle = NULL; // in case a handle is needed for something
 DWORD pid = 0; // in case a pid is needed
 DWORD result = 0; // store return code
@@ -87,6 +88,11 @@ void SetSecurityInfoWrapper(HANDLE handle, LPWSTR pObjectName, SE_OBJECT_TYPE Ob
 	}//if
 }
 
+typedef NTSTATUS(WINAPI* NtOpenSessionCall) (
+	PHANDLE SessionHandle,
+	ACCESS_MASK DesiredAccess,
+	POBJECT_ATTRIBUTES ObjectAttributes);
+
 int main()
 {
 
@@ -111,6 +117,21 @@ int main()
 		pid = (int)_wtoi(pathObject);
 		if (pid) {
 			handle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
+		}//if
+		if (NULL == handle) {
+			HMODULE hNtdll = GetModuleHandleW(L"ntdll.dll");
+			Error(L"GetModuleHandleW");
+			NtOpenSessionCall NtOpenSession = (NtOpenSessionCall)GetProcAddress(hNtdll, "NtOpenSession");
+			Error(L"GetProcAddress");
+			UNICODE_STRING ucsPathObject;
+			ucsPathObject.Buffer = pathObject;
+			ucsPathObject.Length = wcslen(pathObject) * sizeof(WCHAR);
+			ucsPathObject.MaximumLength = ucsPathObject.Length;
+			OBJECT_ATTRIBUTES oa;
+			InitializeObjectAttributes(&oa, &ucsPathObject, 0, NULL, NULL);
+			Error(L"InitializeObjectAttributes");
+			status = NtOpenSession(&handle, GENERIC_ALL, &oa);
+			Error(L"NtOpenSession");
 		}//if
 	}//if
 
