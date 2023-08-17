@@ -12,7 +12,7 @@ LPWSTR sddl; // an sddl for a dacl
 PSECURITY_DESCRIPTOR psd = NULL; // a pointer to a security descriptor
 PACL pdacl = NULL; // a pointer to a DACL
 PSID owner = NULL; // a pointer to an owner
-BOOL debug = TRUE;
+BOOL debug = FALSE;
 HANDLE handle = NULL; // in case a handle is needed for something
 DWORD pid = 0; // in case a pid is needed
 DWORD result = 0; // store return code
@@ -38,7 +38,8 @@ void help()
 	wprintf(L"Disable or enable inheritance with AclEdit type pathObject sddl D|E.\n");
 	wprintf(L"File, service, printer, registry, and share objects take UNC paths, DS_OBJECT takes X.500 format.\n");
 	wprintf(L"\"6 pid\" will display ACL of process with id pid\n");
-	wprintf(L"\"7 sName\" will display permissions of the current session' window object sName.\n\n");
+	wprintf(L"\"6 \\KernelObjects\\Session#\" will display ACL of session number #.\n");
+	wprintf(L"\"7 WinSta0 or 7 Default\" will display permissions of the current session's window station 0 or default desktop.\n\n");
 }
 
 void Error(LPCWSTR sz)
