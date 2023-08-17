@@ -43,12 +43,12 @@ Types are these:
 12      SE_REGISTRY_WOW64_32KEY  
 13      SE_REGISTRY_WOW64_64KEY  
 
-Currently supports setting DACLs and owners. Setting an owner might require the appropriate privilege.
-Disable or enable inheritance with AclEdit type pathObject sddl D|E.
-File, service, printer, registry, and share objects take UNC paths, DS_OBJECT takes X.500 format.
-"6 pid" will display ACL of process with id pid
-"6 \KernelObjects\Session#" will display ACL of session number #.
-"7 WinSta0 or 7 Default" will display permissions of the current session's window station 0 or default desktop.
+Currently supports setting DACLs and owners. Setting an owner might require the appropriate privilege. 
+Disable or enable inheritance with AclEdit type pathObject sddl D|E. 
+File, service, printer, registry, and share objects take UNC paths, DS_OBJECT takes X.500 format. 
+"6 pid" will display ACL of process with id pid 
+"6 \KernelObjects\Session#" will display ACL of session number #. 
+"7 WinSta0 or 7 Default" will display permissions of the current session's window station 0 or default desktop. 
 
 **AclEdit 1 "C:\"**
 
