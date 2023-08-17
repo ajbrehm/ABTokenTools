@@ -43,10 +43,12 @@ Types are these:
 12      SE_REGISTRY_WOW64_32KEY  
 13      SE_REGISTRY_WOW64_64KEY  
 
-Currently supports setting DACLs and owners. Setting an owner might require the appropriate privilege.  
-Disable or enable inheritance with AclEdit type pathObject sddl D|E. I don't know what effect this can have outside filesystem ACLs.  
+Currently supports setting DACLs and owners. Setting an owner might require the appropriate privilege.
+Disable or enable inheritance with AclEdit type pathObject sddl D|E.
 File, service, printer, registry, and share objects take UNC paths, DS_OBJECT takes X.500 format.
-If a number is given as pathObject for a SE_KERNEL_OBJECT, it is read as a process id.
+"6 pid" will display ACL of process with id pid
+"6 \KernelObjects\Session#" will display ACL of session number #.
+"7 WinSta0 or 7 Default" will display permissions of the current session's window station 0 or default desktop.
 
 **AclEdit 1 "C:\"**
 
@@ -134,12 +136,6 @@ This is not always possible.
 # S4ULogon
 
 Logs a user on without a password and does nothing. To be honest, I have forgotten what this was good for other than a proof of concept…
-
-# ScheduledTaskAclEdit
-
-**ScheduledTaskAclEdit pathScheduledTask [sddl]**
-
-Displays or set the security descriptor for the scheduled task or folder of scheduled tasks pathScheduledTask.
 
 
 # SessionForPId
