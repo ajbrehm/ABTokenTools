@@ -26,7 +26,7 @@
 #include <sysinfoapi.h>
 #define PASSWORDBUFFERSIZE 512
 
-BOOL debug = FALSE;
+BOOL debug = TRUE;
 BOOL ok = TRUE;
 LSTATUS status = 0;
 
@@ -153,12 +153,18 @@ int main()
 			cDomainUserPassword++;
 		}//if
 		if (!sPassword) {
-			wprintf(L"Enter password (which WILL be echoed!):");
+			wprintf(L"Enter password (which will NOT be echoed):");
 			sPassword = (LPWSTR)GlobalAlloc(0, PASSWORDBUFFERSIZE);
-			fgetws(sPassword, PASSWORDBUFFERSIZE, stdin);
+			DWORD i = 0;
+			WCHAR c;
+			while ((c = _getwch(stdin)) != L'\r') {
+				wprintf(L"*");
+				sPassword[i] = c;
+				i++;
+			}//while
+			wprintf(L"\n");
+			sPassword[i] = 0;
 			DWORD cchPassword = wcslen(sPassword);
-			DWORD cr = cchPassword - 1;
-			sPassword[cr] = 0;
 			if (debug) { fwprintf(stderr, L"Password is [%s].\n", sPassword); }
 			cDomainUserPassword++;
 		}//if
