@@ -157,7 +157,7 @@ int main()
 			sPassword = (LPWSTR)GlobalAlloc(0, PASSWORDBUFFERSIZE);
 			DWORD i = 0;
 			WCHAR c;
-			while ((c = _getwch(stdin)) != L'\r') {
+			while ((c = _getwch()) != L'\r') {
 				wprintf(L"*");
 				sPassword[i] = c;
 				i++;
