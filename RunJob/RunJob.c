@@ -26,7 +26,7 @@
 #include <sysinfoapi.h>
 #define PASSWORDBUFFERSIZE 512
 
-BOOL debug = TRUE;
+BOOL debug = FALSE;
 BOOL ok = TRUE;
 LSTATUS status = 0;
 
