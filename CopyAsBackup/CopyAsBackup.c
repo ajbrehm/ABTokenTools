@@ -24,6 +24,19 @@
 #include <stdio.h>
 #define BUFFER_SIZE 256
 
+void EnablePrivilege(LPWSTR sPrivilegeName)
+{
+	HANDLE hCurrentProcessToken;
+	OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hCurrentProcessToken);
+	TOKEN_PRIVILEGES privs;
+	LUID luid;
+	LookupPrivilegeValue(NULL, sPrivilegeName, &luid);
+	privs.PrivilegeCount = 1;
+	privs.Privileges[0].Luid = luid;
+	privs.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+	AdjustTokenPrivileges(hCurrentProcessToken, FALSE, &privs, sizeof(TOKEN_PRIVILEGES), NULL, NULL);
+}
+
 int main(int argc, LPTSTR argv[])
 {
 	HANDLE hIn, hOut;
@@ -34,6 +47,8 @@ int main(int argc, LPTSTR argv[])
 		printf("CopyAsBackup pathSource pathTarget\n");
 		return 1;
 	}//if
+
+	EnablePrivilege(L"SeBackupPrivilege");
 
 	hIn = CreateFileA(argv[1], GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
 	if (INVALID_HANDLE_VALUE == hIn) {
