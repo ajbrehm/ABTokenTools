@@ -28,19 +28,32 @@
 
 BOOL debug = FALSE;
 BOOL ok = TRUE;
+DWORD error = 0;
 LSTATUS status = 0;
 
 void Error(LPCWSTR sz)
 {
 	if (!debug) { return; }
-	fwprintf(stderr, sz);
-	if ((0 == status) && ok) {
-		fwprintf(stderr, L"\tOK\n");
-	} else {
-		fwprintf(stderr, L"\t%d\n", status);
-	}//if
+	if (!ok || status) { error = GetLastError(); }
+	fwprintf(stderr, L"%s\tOK: [%d]\tSTATUS: [%d], Error: [%d]\n", sz, ok, status, error);
+	error = 0;
 	status = 0;
 	ok = TRUE;
+}
+
+void EnablePrivilege(LPWSTR sPrivilegeName)
+{
+	HANDLE hCurrentProcessToken;
+	OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hCurrentProcessToken);
+	TOKEN_PRIVILEGES privs;
+	LUID luid;
+	ok = LookupPrivilegeValue(NULL, sPrivilegeName, &luid);
+	Error(L"LookupPrivilegeValue");
+	privs.PrivilegeCount = 1;
+	privs.Privileges[0].Luid = luid;
+	privs.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+	ok = AdjustTokenPrivileges(hCurrentProcessToken, FALSE, &privs, sizeof(TOKEN_PRIVILEGES), NULL, NULL);
+	Error(L"AdjustTokenPrivileges");
 }
 
 void Help()
@@ -73,7 +86,7 @@ int main()
 	LPWSTR pathImage = NULL;
 	DWORD processlimit = 0;
 	DWORD argsstart = 0;
-	ULONG sessionid = 65536;
+	DWORD sessionid = 65536;
 	LPWSTR sDomain = NULL;
 	LPWSTR sUser = NULL;
 	LPWSTR sPassword = NULL;
@@ -135,7 +148,7 @@ int main()
 	size_t length = wcslen(L"/args");
 	sNewCmdLine += length + 1;
 
-	// if a job is wanted, start process suspended
+	// configure process creation flags
 	DWORD dwCreationFlags = 0;
 	if (tfCreateJob) { dwCreationFlags += CREATE_SUSPENDED; }
 
@@ -178,7 +191,6 @@ int main()
 		si.cb = sizeof(STARTUPINFOW);
 		ZeroMemory(&si, si.cb);
 		ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
-		DWORD dwCreationFlags = 0;
 		dwCreationFlags += CREATE_NEW_CONSOLE;
 
 		if (sessionid != 65536) {
