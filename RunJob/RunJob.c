@@ -164,7 +164,7 @@ int main()
 			}//while
 			wprintf(L"\n");
 			sPassword[i] = 0;
-			DWORD cchPassword = wcslen(sPassword);
+			size_t cchPassword = wcslen(sPassword);
 			if (debug) { fwprintf(stderr, L"Password is [%s].\n", sPassword); }
 			cDomainUserPassword++;
 		}//if
