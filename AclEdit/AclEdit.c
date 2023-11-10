@@ -36,7 +36,8 @@ void help()
 	wprintf(L"%s\n", L"13\tSE_REGISTRY_WOW64_64KEY\n");
 	wprintf(L"Currently supports setting DACLs and owners. Setting an owner might require the appropriate privilege.\n");
 	wprintf(L"Disable or enable inheritance with AclEdit type pathObject sddl D|E.\n");
-	wprintf(L"File, service, printer, registry, and share objects take UNC paths, DS_OBJECT takes X.500 format.\n");
+	wprintf(L"File, service, printer, registry, and share objects take UNC paths. DS_OBJECT takes X.500 format.\n");
+	wprintf(L"Registry paths start with \"CLASSES_ROOT\", \"CURRENT_USER\", \"MACHINE\", and \"USERS\". \"MACHINE\\SOFTWARE\" is a key.\n");
 	wprintf(L"\"6 pid\" will display ACL of process with id pid\n");
 	wprintf(L"\"6 \\KernelObjects\\Session#\" will display ACL of session number #.\n");
 	wprintf(L"\"7 WinSta0 or 7 Default\" will display permissions of the current session's window station 0 or default desktop.\n\n");
