@@ -154,7 +154,7 @@ Displays the privileges a user principal name would have if he logged on now. Th
 
 # ShellExecute
 
-**ShellExecute edit|explore|find|open|print|runas pathFile**
+**ShellExecute [edit|explore|find|open|print|runas] pathFile**
 
 Tells the shell (Explorer) to execute the given verb (edit, explore etc.) with the given file. ShellExecute open cmd.exe will run cmd.exe. ShellExecute runas cmd.exe will run cmd.exe in elevated mode (and trigger a UAC warning).
 
