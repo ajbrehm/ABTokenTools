@@ -95,6 +95,9 @@ int main()
 	BOOL tfCreateJob = FALSE;
 	
 	for (int i = 1; i < args; i++) {
+		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCmdLine[i], -1, L"/args", 5, NULL, NULL, 0)) {
+			break;
+		}//if
 		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCmdLine[i], -1, L"/PId", 4, NULL, NULL, 0)) {
 			if (i + 1 == args) { Help(); }
 			pid = _wtoi(aCmdLine[i + 1]);
