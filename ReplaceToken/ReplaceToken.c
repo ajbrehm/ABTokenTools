@@ -35,35 +35,45 @@ void EnablePrivilege(LPWSTR sPrivilegeName)
 
 int main()
 {
-	// read command line
-	LPWSTR sCmdLine = GetCommandLineW();
-	int args = 0;
-	LPWSTR* aCmdLine = CommandLineToArgvW(sCmdLine, &args);
-	if (args < 2) {
-		wprintf(L"ReplaceToken pid");
-		exit(0);
-	}//if
-	LPWSTR szPID = aCmdLine[1];
-	DWORD pid = (DWORD)_wtol(szPID);
+	HANDLE hBenoitToken = NULL;
+	ok = LogonUserW(L"benoit", L".", L"Password1", LOGON32_LOGON_INTERACTIVE, LOGON32_PROVIDER_DEFAULT, &hBenoitToken);
+	Error(L"LogonUser");
 
-	// enable debug privilege
-	EnablePrivilege(L"SeDebugPrivilege");
+	//HANDLE hBenoitThreadToken = NULL;
+	//ok = DuplicateTokenEx(hBenoitToken, TOKEN_ALL_ACCESS, NULL, SecurityImpersonation, TokenImpersonation, &hBenoitThreadToken);
+	//Error(L"DuplicateTokenEx");
 
-	HANDLE hCurrentProcess = GetCurrentProcess();
-	HANDLE hCurrentProcessToken = NULL;
-	ok = OpenProcessToken(hCurrentProcess, TOKEN_IMPERSONATE | TOKEN_DUPLICATE, &hCurrentProcessToken);
-	Error(L"OpenProcessToken");
+	//ok = SetThreadToken(NULL, hBenoitThreadToken);
+	//Error(L"SetThreadToken");
 
-	HANDLE hNewTargetProcessToken = NULL;
-	ok = DuplicateToken(hCurrentProcessToken, SecurityImpersonation, &hNewTargetProcessToken);
-	Error(L"DuplicateToken");
+	//HANDLE hFile = CreateFileW(L"ReplaceTokenTestFile.txt", FILE_GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	//Error(L"CreateFile");
 
-	HANDLE hTargetProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
-	Error(L"OpenProcess");
+	//DWORD written = 0;
+	//ok = WriteFile(hFile, "Hello", 6, &written, NULL);
+	//Error(L"WriteFile");
 
+	//CloseHandle(hFile);
+	//Error(L"CloseHandle");
+
+
+	PROCESS_INFORMATION pi;
+	STARTUPINFOW si;
+	ZeroMemory(&si, sizeof(STARTUPINFOW));
+	si.cb = sizeof(STARTUPINFOW);
+	si.lpDesktop = L"Winsta0\\default";
+	ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
+	DWORD dwCreationFlags = 0;
+	//dwCreationFlags += CREATE_NEW_CONSOLE;
+	//dwCreationFlags += CREATE_NO_WINDOW;
+
+	ok = CreateProcessAsUserW(hBenoitToken, L"C:\\Windows\\System32\\cmd.exe", L"", NULL, NULL, FALSE, dwCreationFlags, NULL, NULL, &si, &pi);
+	Error(L"CreateProcessAsUser");
+
+	if (pi.hThread) { CloseHandle(pi.hThread); }
+	if (pi.hProcess) { CloseHandle(pi.hProcess); }
 	
+	system("exit");
 
-	CloseHandle(hTargetProcess);
-	CloseHandle(hCurrentProcess);
 
 }
