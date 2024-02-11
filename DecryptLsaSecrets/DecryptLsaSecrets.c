@@ -30,7 +30,7 @@
 #define ERRORSIZE 40
 #define SECRETSIZE 100
 
-BOOL debug = FALSE;
+BOOL debug = TRUE;
 BOOL ok;
 DWORD error;
 
@@ -84,7 +84,7 @@ int main()
 
 	// duplicate token to read it
 	HANDLE hDuplicateToken = NULL;
-	ok = DuplicateToken(hProcessToken, TOKEN_DUPLICATE, &hDuplicateToken);
+	ok = DuplicateToken(hProcessToken, SecurityImpersonation, &hDuplicateToken);
 	Error(L"DuplicateToken");
 
 	// set new thread token
