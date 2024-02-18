@@ -149,7 +149,7 @@ Logs a user on without a password and does nothing. To be honest, I have forgott
 
 **SessionForPId pid**
 
-Returns the session for the PID pid in case someone wants it.
+Returns the session for the PId pid in case someone wants it.
 
 
 # TokenTest
