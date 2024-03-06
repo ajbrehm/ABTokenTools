@@ -116,6 +116,13 @@ Gets the SID (security identifier) for a security principal.
 This does the same as LookupAccountName but vice versa, gets the user name for a SID.
 
 
+# ReplaceToken  
+
+**ReplaceToken logonmethod pathImage [sArguments]**  
+
+Using logonmethod 1 (CreateProcessAsUser()) or 2 (CreateProcessWithLogon()) starts a program pathImage as a user defined (currently statically in the source code). Logon method 1 requires the calling user to have SeAssignPrimaryTokenPrivilege. Logon method 2 requires the Secondary Logon service to be running.  
+
+
 # RunJob
 
 **RunJob [/pid pid] [/image pathImage] [/processlimit processlimit] [/sessionid sessionid] [/domain sDomain] [/user sUser] [/password sPassword] [/args ...]**
@@ -142,7 +149,7 @@ Logs a user on without a password and does nothing. To be honest, I have forgott
 
 **SessionForPId pid**
 
-Returns the session for the PID pid in case someone wants it.
+Returns the session for the PId pid in case someone wants it.
 
 
 # TokenTest
