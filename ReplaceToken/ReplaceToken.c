@@ -87,11 +87,6 @@ int main()
 
 	if (2 == logontype) {
 
-		ZeroMemory(&si, sizeof(STARTUPINFOW));
-		si.cb = sizeof(STARTUPINFOW);
-		ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
-		dwCreationFlags = 0;
-
 		ok = CreateProcessWithLogonW(L"benoit", L".", L"Password1", 0, pathImage, sArguments, dwCreationFlags, NULL, NULL, &si, &pi);
 		Error(L"CreateProcessWithLogonW");
 		
@@ -99,8 +94,8 @@ int main()
 
 	if (pi.hProcess) {
 		// get the process
-		HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pi.dwProcessId);
-		Error(L"OpenProcess");
+		//HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pi.dwProcessId);
+		//Error(L"OpenProcess");
 
 		// create a job object for the process
 		HANDLE hJob = CreateJobObjectW(NULL, L"");
@@ -111,7 +106,7 @@ int main()
 		Error(L"SetInformationJobObject");
 
 		// add process to job
-		ok = AssignProcessToJobObject(hJob, hProcess);
+		ok = AssignProcessToJobObject(hJob, pi.hProcess);
 		Error(L"AssignProcessToJobObject");
 
 		// unsuspend main thread if it has been suspended
@@ -120,7 +115,6 @@ int main()
 		}//if
 
 		// clean up
-		CloseHandle(hProcess);
 		CloseHandle(hJob);
 	}//if
 
