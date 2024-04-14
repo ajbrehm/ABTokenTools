@@ -20,15 +20,15 @@
 //OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //SOFTWARE.
 
-
-
 #define SECURITY_WIN32
 #include <Windows.h>
 #include <security.h>
 #include <wchar.h>
 #include <NTSecAPI.h>
+#include <lmcons.h>
+
 #define ERRORSIZE 40
-#define SECRETSIZE 100
+#define LINELENGTH 255
 
 BOOL debug = FALSE;
 BOOL ok;
@@ -62,16 +62,30 @@ int main()
 {
 	// prepare reading command line arguments
 	LPWSTR szCommandLine = GetCommandLineW();
-	int count = 0;
-	LPWSTR* aCommandLine = CommandLineToArgvW(szCommandLine, &count);
+	int cCommandLine = 0;
+	LPWSTR* aCommandLine = CommandLineToArgvW(szCommandLine, &cCommandLine);
+
+	if (cCommandLine < 3) {
+		wprintf(L"ImpersonateWriteFile pid pathFile [sContent]\n");
+		wprintf(L"Type or paste lines of text. Start a line with a dot to exit.");
+		exit(0);
+	}//if
+
 	LPWSTR szPID = aCommandLine[1];
-	LPWSTR szServiceName = aCommandLine[2];
+	LPWSTR pathFileName = aCommandLine[2];
+
+	// get user name
+	LPWSTR sUserName = (LPWSTR)malloc((UNLEN + 1) * sizeof(WCHAR));
+	DWORD cchUserName = UNLEN + 1;
+	ok = GetUserNameW(sUserName, &cchUserName);
+	Error(L"GetUserNameW");
+	wprintf(L"Now running as [%s].\n", sUserName);
 
 	// read the process id into a DWORD
 	DWORD pid = (DWORD)_wtol(szPID);
 
-	// enable debug privilege
-	EnablePrivilege(L"SeDebugPrivilege");
+	// enable impersonate privilege
+	EnablePrivilege(L"SeImpersonatePrivilege");
 
 	// get the process handle
 	HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, pid);
@@ -79,51 +93,65 @@ int main()
 
 	// get the process token, this might not work because access denied
 	HANDLE hProcessToken = NULL;
-	ok = OpenProcessToken(hProcess, TOKEN_IMPERSONATE | TOKEN_DUPLICATE, &hProcessToken);
+	//ok = OpenProcessToken(hProcess, TOKEN_IMPERSONATE | TOKEN_DUPLICATE, &hProcessToken);
+	ok = OpenProcessToken(hProcess, TOKEN_DUPLICATE, &hProcessToken);
 	Error(L"OpenProcessToken");
 
 	// duplicate token to read it
 	HANDLE hDuplicateToken = NULL;
-	ok = DuplicateToken(hProcessToken, TokenImpersonation, &hDuplicateToken);
+	ok = DuplicateToken(hProcessToken, SecurityImpersonation, &hDuplicateToken);
 	Error(L"DuplicateToken");
 
 	// set new thread token
 	ok = SetThreadToken(NULL, hDuplicateToken);
 	Error(L"SetThreadToken");
 
-	// prepare LsaOpenPolicy
-	LSA_OBJECT_ATTRIBUTES loa;
-	loa.Length = 0;
-	loa.RootDirectory = NULL;
-	loa.Attributes = 0;
-	loa.SecurityDescriptor = NULL;
-	loa.SecurityQualityOfService = NULL;
-	ZeroMemory(&loa, sizeof(loa));
+	// get user name
+	cchUserName = UNLEN + 1;
+	ok = GetUserNameW(sUserName, &cchUserName);
+	Error(L"GetUserNameW");
+	wprintf(L"Now running as [%s].\n", sUserName);
 
-	LSA_UNICODE_STRING lusLocalSystem;
-	lusLocalSystem.Buffer = NULL;
-	lusLocalSystem.Length = 0;
-	lusLocalSystem.MaximumLength = 0;
-
-	LSA_UNICODE_STRING lusSecretLocation;
-	lusSecretLocation.Buffer = aCommandLine[2];
-	lusSecretLocation.Length = wcslen(lusSecretLocation.Buffer) * sizeof(WCHAR);
-	lusSecretLocation.MaximumLength = lusSecretLocation.Length;
-
-	// LsaOpenPolicy
-	LSA_HANDLE hPolicy = NULL;
-	LsaOpenPolicy(&lusLocalSystem, &loa, POLICY_ALL_ACCESS, &hPolicy);
-	Error(L"LsaOpenPolicy");
-		
-	// retrieve secret
-	PLSA_UNICODE_STRING plusSecret = NULL;
-	ok = LsaRetrievePrivateData(hPolicy, &lusSecretLocation, &plusSecret);
-	Error(L"LsaRetrievePrivateData");
+	// open file
+	HANDLE hFile = CreateFileW(pathFileName, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	Error(L"CreateFile");
 	
-	// output
-	wprintf(L"%s\n", plusSecret->Buffer);
-	
-	// frees
-	LsaFreeMemory(plusSecret);
-	LsaClose(hPolicy);
+	// write file
+	DWORD written = 0;
+	if (4 == cCommandLine) {
+		WriteFile(hFile, aCommandLine[3], wcslen(aCommandLine[3]) * sizeof(WCHAR), &written, NULL);
+	} else {
+		LPWSTR sBuffer;
+		BOOL tfContinue = TRUE;
+		do {
+			sBuffer = (LPWSTR)malloc(LINELENGTH * sizeof(WCHAR));
+			if (sBuffer != NULL) {
+				ok = wscanf_s(L"%s", sBuffer, LINELENGTH);
+				if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, sBuffer, -1, L".", 1, NULL, NULL, 0)) {
+					tfContinue = FALSE;
+				} else {
+					WriteFile(hFile, sBuffer, wcslen(sBuffer) * sizeof(WCHAR), &written, NULL);
+					wprintf(L"[%d] bytes written.\n", written);
+					WriteFile(hFile, L"\n", wcslen(L"\n") * sizeof(WCHAR), &written, NULL);
+					wprintf(L"[%d] bytes written.\n", written);
+				}//if
+			}//if
+		} while (tfContinue);
+	}//if
+	Error(L"WriteFile");
+
+	// close file
+	CloseHandle(hFile);
+	Error(L"CloseHandle");
+
+	// revert
+	RevertToSelf();
+	Error(L"RevertToSelf");
+
+	// get user name
+	cchUserName = UNLEN + 1;
+	ok = GetUserNameW(sUserName, &cchUserName);
+	Error(L"GetUserNameW");
+	wprintf(L"Now running as [%s].\n", sUserName);
+
 }
