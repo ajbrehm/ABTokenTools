@@ -79,7 +79,7 @@ int main()
 
 	// get the process token, this might not work because access denied
 	HANDLE hProcessToken = NULL;
-	ok = OpenProcessToken(hProcess, TOKEN_IMPERSONATE|TOKEN_DUPLICATE, &hProcessToken);
+	ok = OpenProcessToken(hProcess, TOKEN_IMPERSONATE | TOKEN_DUPLICATE, &hProcessToken);
 	Error(L"OpenProcessToken");
 
 	// duplicate token to read it
