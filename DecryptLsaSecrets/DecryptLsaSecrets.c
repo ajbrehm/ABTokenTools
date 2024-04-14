@@ -84,7 +84,7 @@ int main()
 
 	// duplicate token to read it
 	HANDLE hDuplicateToken = NULL;
-	ok = DuplicateToken(hProcessToken, SecurityImpersonation, &hDuplicateToken);
+	ok = DuplicateToken(hProcessToken, TokenImpersonation, &hDuplicateToken);
 	Error(L"DuplicateToken");
 
 	// set new thread token
