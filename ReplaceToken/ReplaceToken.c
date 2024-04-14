@@ -8,6 +8,11 @@ BOOL ok = TRUE;
 DWORD error = 0;
 LSTATUS status = 0;
 
+// modify these
+LPWSTR sUserName = L"user";
+LPWSTR sPassword = L"password";
+// stop modifying here
+
 void Error(LPCWSTR sz)
 {
 	if (!debug) { return; }
@@ -45,6 +50,7 @@ int main()
 		wprintf(L"logonmethod can be 1 (CreateProcessAsUser()) or 2 (CreateProcessWithLogon()).\n");
 		wprintf(L"You need SeAssignPrimaryTokenPrivilege to use logon method 1.\n");
 		wprintf(L"You need the Secondary Logon service to use logon method 2.\n");
+		wprintf(L"Note that you have to compile this tool with a user name and password for the user to be used.\n");
 		wprintf(L"ReplaceToken creates a process with a job process limit of 1!.\n");
 		exit(0);
 	}//if
@@ -75,19 +81,18 @@ int main()
 
 		EnablePrivilege(L"SeAssignPrimaryTokenPrivilege");
 
-		HANDLE hBenoitToken = NULL;
-		ok = LogonUserW(L"benoit", L".", L"Password1", LOGON32_LOGON_INTERACTIVE, LOGON32_PROVIDER_DEFAULT, &hBenoitToken);
+		HANDLE hUserToken = NULL;
+		ok = LogonUserW(sUserName, L".", sPassword, LOGON32_LOGON_INTERACTIVE, LOGON32_PROVIDER_DEFAULT, &hUserToken);
 		Error(L"LogonUser");
 
-
-		ok = CreateProcessAsUserW(hBenoitToken, pathImage, sArguments, NULL, NULL, FALSE, dwCreationFlags, NULL, NULL, &si, &pi);
+		ok = CreateProcessAsUserW(hUserToken, pathImage, sArguments, NULL, NULL, FALSE, dwCreationFlags, NULL, NULL, &si, &pi);
 		Error(L"CreateProcessAsUser");
 
 	}//
 
 	if (2 == logontype) {
 
-		ok = CreateProcessWithLogonW(L"benoit", L".", L"Password1", 0, pathImage, sArguments, dwCreationFlags, NULL, NULL, &si, &pi);
+		ok = CreateProcessWithLogonW(sUserName, L".", sPassword, 0, pathImage, sArguments, dwCreationFlags, NULL, NULL, &si, &pi);
 		Error(L"CreateProcessWithLogonW");
 		
 	}//if
