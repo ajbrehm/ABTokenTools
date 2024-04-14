@@ -102,6 +102,13 @@ Enables the user’s privilege given (if the user has it) and starts cmd with th
 Often gets the privileges and owner of the process with pid pid.
 
 
+# ImpersonateWriteFile
+
+**ImpersonateWriteFile pid pathFile [sContent]**
+
+Writes sContent into a file pathFile impersonating the user of process with process if pid. You obviously need to have access to process pid's token but you may be surprised to learn to how many process tokens you have access.
+
+
 # LookupAccountName
 
 **LookupAccountName principal**
