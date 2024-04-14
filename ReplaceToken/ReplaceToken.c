@@ -3,7 +3,7 @@
 #include <WtsApi32.h>
 #include <sysinfoapi.h>
 
-BOOL debug = TRUE;
+BOOL debug = FALSE;
 BOOL ok = TRUE;
 DWORD error = 0;
 LSTATUS status = 0;

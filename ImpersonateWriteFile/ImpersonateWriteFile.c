@@ -30,7 +30,7 @@
 #define ERRORSIZE 40
 #define LINELENGTH 255
 
-BOOL debug = TRUE;
+BOOL debug = FALSE;
 BOOL ok;
 DWORD error;
 
