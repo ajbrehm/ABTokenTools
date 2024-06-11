@@ -24,6 +24,7 @@
 #include <wchar.h>
 #include <WtsApi32.h>
 #include <sysinfoapi.h>
+#include <UserEnv.h>
 #define PASSWORDBUFFERSIZE 512
 
 BOOL debug = TRUE;
@@ -229,11 +230,41 @@ int main()
 
 		if (sessionid != 65536) {
 			HANDLE hToken;
-			ok = WTSQueryUserToken(sessionid, &hToken);
-			Error(L"WTSQueryUserToken");
-			CreateProcessAsUserW(hToken, pathImage, sNewCmdLine, NULL, NULL, FALSE, dwCreationFlags, NULL, NULL, &si, &pi);
-			Error(L"CreateProcessAsUserW");
-			CloseHandle(hToken);
+			if (3 == cDomainUserPassword) {
+				if (debug) { wprintf(L"SessionId is [%d]. User is [%s]. Domain is [%s]. Password is [%s].\n", sessionid, sUser, sDomain, sPassword); }
+				ok = LogonUserW(sUser, sDomain, sPassword, LOGON32_LOGON_INTERACTIVE, LOGON32_PROVIDER_DEFAULT, &hToken);
+				Error(L"LogonUserW");
+				//PROFILEINFOW profile;
+				//profile.dwSize = sizeof(PROFILEINFO);
+				//profile.lpUserName = sUser;
+				//ok = LoadUserProfileW(hToken, &profile);
+				//Error(L"LoadUserProfileW");
+				//LPVOID lpEnvironment = NULL;
+				//ok = CreateEnvironmentBlock(&lpEnvironment, hToken, TRUE);
+				//Error(L"CreateEnvironmentBlock");
+				//hToken = GetCurrentProcessToken();
+				HANDLE hDuplicateToken = NULL;
+				ok = DuplicateTokenEx(hToken, TOKEN_ADJUST_SESSIONID|TOKEN_QUERY|TOKEN_ALL_ACCESS, NULL, SecurityImpersonation, TokenPrimary, &hDuplicateToken);
+				Error(L"DuplicateTokenEx");
+				EnablePrivilege(L"SeTcbPrivilege");
+				ok = SetTokenInformation(hDuplicateToken, TokenSessionId, &sessionid, sizeof(DWORD));
+				Error(L"SetTokenInformation");
+				DWORD foundsessionid = 65536;
+				DWORD size = 0;
+				ok = GetTokenInformation(hDuplicateToken, TokenSessionId, &foundsessionid, sizeof(DWORD), &size);
+				Error(L"GetTokenInformation");
+				wprintf(L"Found session id [%d] in token.\n", foundsessionid);
+				si.lpDesktop = L"winsta0\\default";
+				EnablePrivilege(L"SeIncreaseQuotaPrivilege");
+				ok = CreateProcessAsUserW(hDuplicateToken, pathImage, sNewCmdLine, NULL, NULL, FALSE, dwCreationFlags, NULL, NULL, &si, &pi);
+				Error(L"CreateProcessAsUserW");
+			} else {
+				ok = WTSQueryUserToken(sessionid, &hToken);
+				Error(L"WTSQueryUserToken");
+				CreateProcessAsUserW(hToken, pathImage, sNewCmdLine, NULL, NULL, FALSE, dwCreationFlags, NULL, NULL, &si, &pi);
+				Error(L"CreateProcessAsUserW");
+				CloseHandle(hToken);
+			}//if
 		} else {
 			if (3 == cDomainUserPassword) {
 				ok = CreateProcessWithLogonW(sUser, sDomain, sPassword, 0, pathImage, sNewCmdLine, dwCreationFlags, NULL, NULL, &si, &pi);
