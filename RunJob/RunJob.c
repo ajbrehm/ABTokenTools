@@ -69,6 +69,13 @@ void Help()
 
 int main()
 {
+	// do not debug if running in session 0
+	DWORD mysessionid = 65536;
+	ok = ProcessIdToSessionId(GetCurrentProcessId(), &mysessionid);
+	Error(L"ProcessIdToSessionId");
+	if (0 == mysessionid) { debug = FALSE; }
+	if (debug) { wprintf(L"Not running in session 0.\n"); }
+
 	// read command line
 	LPWSTR sCmdLine = GetCommandLineW();
 	int args = 0;
