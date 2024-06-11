@@ -97,6 +97,7 @@ int main()
 	LPWSTR sJobName = L"UnnamedJob";
 	BOOL tfCreateJob = FALSE;
 	BOOL tfRunAs = FALSE;
+	BOOL tfCreateProcessThenRunAs = FALSE;
 	
 	for (int i = 1; i < args; i++) {
 		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCmdLine[i], -1, L"/args", 5, NULL, NULL, 0)) {
@@ -142,7 +143,11 @@ int main()
 			tfCreateJob = TRUE;
 		}//if
 		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCmdLine[i], -1, L"/UseRunAs", 9, NULL, NULL, 0)) {
-			tfRunAs = TRUE;
+			if (65536 == sessionid) {
+				tfCreateProcessThenRunAs = TRUE;
+			} else {
+				tfRunAs = TRUE;
+			}//if
 		}//if
 	}//for
 	
@@ -161,6 +166,15 @@ int main()
 	// configure process creation flags
 	DWORD dwCreationFlags = 0;
 	if (tfCreateJob) { dwCreationFlags += CREATE_SUSPENDED; }
+
+	// spawn process
+	if (tfRunAs) {
+		if (debug) { wprintf(L"Spawning process with RunAs..."); }
+		ShellExecuteW(NULL, L"RunAs", pathImage, sNewCmdLine, NULL, SW_NORMAL);
+		error = GetLastError();
+		Error(L"ShellExecuteW");
+		return error;
+	}//if
 
 	// check for domain, user, and password
 	if (cDomainUserPassword) {
@@ -191,15 +205,6 @@ int main()
 			if (debug) { fwprintf(stderr, L"Password is [%s].\n", sPassword); }
 			cDomainUserPassword++;
 		}//if
-	}//if
-
-	// spawn process
-	if (tfRunAs) {
-		if (debug) { wprintf(L"Spawning process with RunAs..."); }
-		ShellExecuteW(NULL, L"RunAs", pathImage, sNewCmdLine, NULL, SW_NORMAL);
-		error = GetLastError();
-		Error(L"ShellExecuteW");
-		return error;
 	}//if
 
 	// start process
