@@ -63,6 +63,7 @@ void Help()
 	wprintf(L"\nRunJob /PId pid /JobProcessLimit limit (appplies quota to running process)\n\n");
 	wprintf(L"RunJob /Image pathImage [/JobProcessLimit limit] [[[/Domain sDomain] /User sUser] /Password sPassword] [/SessionId id] [/args ...] (creates a process)\n\n");
 	wprintf(L"RunJob /Image pathImage /UseRunAs [/args ...] (spawns a process using RunAs verb)\n\n");
+	if (debug) { getwchar(); }
 	exit(0);
 }
 
@@ -80,9 +81,11 @@ int main()
 		for (int i = 0; i < args; i++) {
 			wprintf(L"%d [%s]\n", i, aCmdLine[i]);
 		}//for
+		getwchar();
 	}//if
 
 	// get arguments
+	BOOL tfArgs = FALSE;
 	BOOL tfPid = FALSE;
 	DWORD pid = -1;
 	BOOL tfImage = FALSE;
@@ -98,9 +101,10 @@ int main()
 	BOOL tfCreateJob = FALSE;
 	BOOL tfRunAs = FALSE;
 	BOOL tfCreateProcessThenRunAs = FALSE;
-	
+
 	for (int i = 1; i < args; i++) {
 		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCmdLine[i], -1, L"/args", 5, NULL, NULL, 0)) {
+			tfArgs = TRUE;
 			break;
 		}//if
 		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCmdLine[i], -1, L"/PId", 4, NULL, NULL, 0)) {
@@ -143,14 +147,10 @@ int main()
 			tfCreateJob = TRUE;
 		}//if
 		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCmdLine[i], -1, L"/UseRunAs", 9, NULL, NULL, 0)) {
-			if (65536 == sessionid) {
-				tfCreateProcessThenRunAs = TRUE;
-			} else {
-				tfRunAs = TRUE;
-			}//if
+			tfRunAs = TRUE;
 		}//if
 	}//for
-	
+
 	// check for missing image or pid
 	if ((tfPid && tfImage) || (!tfPid && !tfImage)) {
 		wprintf(L"pathImage or pid are mandatory.\n");
@@ -158,10 +158,13 @@ int main()
 	}//if
 
 	// find args for client program
-	LPWSTR sNewCmdLine = wcsstr(sCmdLine, L"/args");
-	if (NULL == sNewCmdLine) { sNewCmdLine = L""; }
-	size_t length = wcslen(L"/args");
-	sNewCmdLine += length + 1;
+	LPWSTR sNewCmdLine = NULL;
+	if (tfArgs) {
+		sNewCmdLine = wcsstr(sCmdLine, L"/args");
+		if (NULL == sNewCmdLine) { sNewCmdLine = L""; }
+		size_t length = wcslen(L"/args");
+		sNewCmdLine += length + 1;
+	}//if
 
 	// configure process creation flags
 	DWORD dwCreationFlags = 0;
@@ -169,7 +172,7 @@ int main()
 
 	// spawn process
 	if (tfRunAs) {
-		if (debug) { wprintf(L"Spawning process with RunAs..."); }
+		if (debug) { wprintf(L"Spawning process with RunAs...\n"); }
 		ShellExecuteW(NULL, L"RunAs", pathImage, sNewCmdLine, NULL, SW_NORMAL);
 		error = GetLastError();
 		Error(L"ShellExecuteW");

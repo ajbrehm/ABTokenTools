@@ -41,7 +41,7 @@ int main()
 
 	// if uac is not active, leave
 	if (TokenElevationTypeDefault == type) {
-		wprintf(L"UAC does not appear to be active.\n");
+		wprintf(L"UAC does not appear to be active or current user does not hold system privileges or is the built-in Administrator.\n");
 		return 0;
 	}//if
 
