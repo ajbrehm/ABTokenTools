@@ -26,7 +26,7 @@
 #include <sysinfoapi.h>
 #define PASSWORDBUFFERSIZE 512
 
-BOOL debug = FALSE;
+BOOL debug = TRUE;
 BOOL ok = TRUE;
 DWORD error = 0;
 LSTATUS status = 0;
@@ -58,8 +58,11 @@ void EnablePrivilege(LPWSTR sPrivilegeName)
 
 void Help()
 {
-	LPWSTR sHelp = L"Usage: RunJob [/PId pid] [/Image pathImage] [/JobProcessLimit processlimit] [/JobName sJobName] [/SessionId sessionid] [/Domain sDomain] [/User sUser] [/Password sPassword] [/args ...]\n";
-	wprintf(sHelp);
+	//LPWSTR sHelp = L"Usage: RunJob [/PId pid] [/Image pathImage] [/JobProcessLimit processlimit] [/JobName sJobName] [/SessionId sessionid] [/Domain sDomain] [/User sUser] [/Password sPassword] [/args ...]\n";
+	//wprintf(sHelp);
+	wprintf(L"\nRunJob /PId pid /JobProcessLimit limit (appplies quota to running process)\n\n");
+	wprintf(L"RunJob /Image pathImage [/JobProcessLimit limit] [[[/Domain sDomain] /User sUser] /Password sPassword] [/SessionId id] [/args ...] (creates a process)\n\n");
+	wprintf(L"RunJob /Image pathImage /UseRunAs [/args ...] (spawns a process using RunAs verb)\n\n");
 	exit(0);
 }
 
@@ -93,6 +96,7 @@ int main()
 	DWORD cDomainUserPassword = 0;
 	LPWSTR sJobName = L"UnnamedJob";
 	BOOL tfCreateJob = FALSE;
+	BOOL tfRunAs = FALSE;
 	
 	for (int i = 1; i < args; i++) {
 		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCmdLine[i], -1, L"/args", 5, NULL, NULL, 0)) {
@@ -136,6 +140,9 @@ int main()
 			if (i + 1 == args) { Help(); }
 			sJobName = aCmdLine[i + 1];
 			tfCreateJob = TRUE;
+		}//if
+		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCmdLine[i], -1, L"/UseRunAs", 9, NULL, NULL, 0)) {
+			tfRunAs = TRUE;
 		}//if
 	}//for
 	
@@ -184,6 +191,15 @@ int main()
 			if (debug) { fwprintf(stderr, L"Password is [%s].\n", sPassword); }
 			cDomainUserPassword++;
 		}//if
+	}//if
+
+	// spawn process
+	if (tfRunAs) {
+		if (debug) { wprintf(L"Spawning process with RunAs..."); }
+		ShellExecuteW(NULL, L"RunAs", pathImage, sNewCmdLine, NULL, SW_NORMAL);
+		error = GetLastError();
+		Error(L"ShellExecuteW");
+		return error;
 	}//if
 
 	// start process
