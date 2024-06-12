@@ -229,11 +229,24 @@ int main()
 		dwCreationFlags += CREATE_NEW_CONSOLE;
 
 		if (sessionid != 65536) {
-			HANDLE hToken;
+			HANDLE hToken = NULL;
 			if (3 == cDomainUserPassword) {
 				if (debug) { wprintf(L"SessionId is [%d]. User is [%s]. Domain is [%s]. Password is [%s].\n", sessionid, sUser, sDomain, sPassword); }
 				ok = LogonUserW(sUser, sDomain, sPassword, LOGON32_LOGON_INTERACTIVE, LOGON32_PROVIDER_DEFAULT, &hToken);
 				Error(L"LogonUserW");
+				if (debug) {
+					DWORD size = 0;
+					ok = GetTokenInformation(hToken, TokenUser, NULL, size, &size);
+					Error(L"GetTokenInformation");
+					PTOKEN_USER pUser = HeapAlloc(GetProcessHeap(), 0, size);
+					ok = GetTokenInformation(hToken, TokenUser, pUser, size, &size);
+					Error(L"GetTokenInformation");
+					PSID pSid = pUser->User.Sid;
+					LPWSTR szSid = NULL;
+					ConvertSidToStringSidW(pSid, &szSid);
+					wprintf(L"Sid is [%s].\n", szSid);
+				}//if
+
 				//PROFILEINFOW profile;
 				//profile.dwSize = sizeof(PROFILEINFO);
 				//profile.lpUserName = sUser;
@@ -242,22 +255,18 @@ int main()
 				//LPVOID lpEnvironment = NULL;
 				//ok = CreateEnvironmentBlock(&lpEnvironment, hToken, TRUE);
 				//Error(L"CreateEnvironmentBlock");
-				//hToken = GetCurrentProcessToken();
-				HANDLE hDuplicateToken = NULL;
-				ok = DuplicateTokenEx(hToken, TOKEN_ADJUST_SESSIONID|TOKEN_QUERY|TOKEN_ALL_ACCESS, NULL, SecurityImpersonation, TokenPrimary, &hDuplicateToken);
-				Error(L"DuplicateTokenEx");
-				EnablePrivilege(L"SeTcbPrivilege");
-				ok = SetTokenInformation(hDuplicateToken, TokenSessionId, &sessionid, sizeof(DWORD));
-				Error(L"SetTokenInformation");
-				DWORD foundsessionid = 65536;
-				DWORD size = 0;
-				ok = GetTokenInformation(hDuplicateToken, TokenSessionId, &foundsessionid, sizeof(DWORD), &size);
-				Error(L"GetTokenInformation");
-				wprintf(L"Found session id [%d] in token.\n", foundsessionid);
-				si.lpDesktop = L"winsta0\\default";
+				//HANDLE hDuplicateToken = NULL;
+				//ok = DuplicateTokenEx(hToken, TOKEN_ADJUST_SESSIONID|TOKEN_QUERY|TOKEN_ALL_ACCESS, NULL, SecurityImpersonation, TokenPrimary, &hDuplicateToken);
+				//Error(L"DuplicateTokenEx");
+				//EnablePrivilege(L"SeTcbPrivilege");
+				//ok = SetTokenInformation(hDuplicateToken, TokenSessionId, &sessionid, sizeof(DWORD));
+				//Error(L"SetTokenInformation");
+
+				//si.lpDesktop = L"winsta0\\default";
 				EnablePrivilege(L"SeIncreaseQuotaPrivilege");
-				ok = CreateProcessAsUserW(hDuplicateToken, pathImage, sNewCmdLine, NULL, NULL, FALSE, dwCreationFlags, NULL, NULL, &si, &pi);
+				ok = CreateProcessAsUserW(hToken, pathImage, sNewCmdLine, NULL, NULL, FALSE, dwCreationFlags, NULL, NULL, &si, &pi);
 				Error(L"CreateProcessAsUserW");
+				exit(0);
 			} else {
 				ok = WTSQueryUserToken(sessionid, &hToken);
 				Error(L"WTSQueryUserToken");
