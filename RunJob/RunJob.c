@@ -25,6 +25,8 @@
 #include <WtsApi32.h>
 #include <sysinfoapi.h>
 #include <UserEnv.h>
+#include <accctrl.h>
+#include <aclapi.h>
 #define PASSWORDBUFFERSIZE 512
 
 BOOL debug = TRUE;
@@ -64,7 +66,6 @@ void Help()
 	wprintf(L"\nRunJob /PId pid /JobProcessLimit limit (appplies quota to running process)\n\n");
 	wprintf(L"RunJob /Image pathImage [/JobProcessLimit limit] [[[/Domain sDomain] /User sUser] /Password sPassword] [/SessionId id] [/args ...] (creates a process)\n\n");
 	wprintf(L"RunJob /Image pathImage /UseRunAs [/args ...] (spawns a process using RunAs verb)\n\n");
-	if (debug) { getwchar(); }
 	exit(0);
 }
 
@@ -89,7 +90,6 @@ int main()
 		for (int i = 0; i < args; i++) {
 			wprintf(L"%d [%s]\n", i, aCmdLine[i]);
 		}//for
-		getwchar();
 	}//if
 
 	// get arguments
@@ -232,20 +232,9 @@ int main()
 			HANDLE hToken = NULL;
 			if (3 == cDomainUserPassword) {
 				if (debug) { wprintf(L"SessionId is [%d]. User is [%s]. Domain is [%s]. Password is [%s].\n", sessionid, sUser, sDomain, sPassword); }
-				ok = LogonUserW(sUser, sDomain, sPassword, LOGON32_LOGON_INTERACTIVE, LOGON32_PROVIDER_DEFAULT, &hToken);
+
+				ok = LogonUserW(sUser, sDomain, sPassword, LOGON32_LOGON_INTERACTIVE, LOGON32_PROVIDER_WINNT50, &hToken);
 				Error(L"LogonUserW");
-				if (debug) {
-					DWORD size = 0;
-					ok = GetTokenInformation(hToken, TokenUser, NULL, size, &size);
-					Error(L"GetTokenInformation");
-					PTOKEN_USER pUser = HeapAlloc(GetProcessHeap(), 0, size);
-					ok = GetTokenInformation(hToken, TokenUser, pUser, size, &size);
-					Error(L"GetTokenInformation");
-					PSID pSid = pUser->User.Sid;
-					LPWSTR szSid = NULL;
-					ConvertSidToStringSidW(pSid, &szSid);
-					wprintf(L"Sid is [%s].\n", szSid);
-				}//if
 
 				//PROFILEINFOW profile;
 				//profile.dwSize = sizeof(PROFILEINFO);
@@ -255,6 +244,7 @@ int main()
 				//LPVOID lpEnvironment = NULL;
 				//ok = CreateEnvironmentBlock(&lpEnvironment, hToken, TRUE);
 				//Error(L"CreateEnvironmentBlock");
+
 				//HANDLE hDuplicateToken = NULL;
 				//ok = DuplicateTokenEx(hToken, TOKEN_ADJUST_SESSIONID|TOKEN_QUERY|TOKEN_ALL_ACCESS, NULL, SecurityImpersonation, TokenPrimary, &hDuplicateToken);
 				//Error(L"DuplicateTokenEx");
@@ -263,9 +253,52 @@ int main()
 				//Error(L"SetTokenInformation");
 
 				//si.lpDesktop = L"winsta0\\default";
-				EnablePrivilege(L"SeIncreaseQuotaPrivilege");
-				ok = CreateProcessAsUserW(hToken, pathImage, sNewCmdLine, NULL, NULL, FALSE, dwCreationFlags, NULL, NULL, &si, &pi);
+				//EnablePrivilege(L"SeIncreaseQuotaPrivilege");
+
+				DWORD size = 0;
+				ok = GetTokenInformation(hToken, TokenUser, NULL, size, &size);
+				Error(L"GetTokenInformation");
+				PTOKEN_USER pUser = HeapAlloc(GetProcessHeap(), 0, size);
+				ok = GetTokenInformation(hToken, TokenUser, pUser, size, &size);
+				Error(L"GetTokenInformation");
+				PSID pSid = pUser->User.Sid;
+				LPWSTR szSid = NULL;
+				ConvertSidToStringSidW(pSid, &szSid);
+				wprintf(L"Sid is [%s].\n", szSid);
+
+				HWINSTA hWindowStation = GetProcessWindowStation();
+				SECURITY_INFORMATION si = DACL_SECURITY_INFORMATION;
+				size = 0;
+				ok = GetUserObjectSecurity(hWindowStation, &si, NULL, 0, &size);
+				Error(L"GetUserObjectSecurity");
+				PSECURITY_DESCRIPTOR psd = HeapAlloc(GetProcessHeap(), 0, size);
+				ok = GetUserObjectSecurity(hWindowStation, &si, psd, size, &size);
+				Error(L"GetUserObjectSecurity");
+				PACL pdacl = NULL;
+												
+				BOOL tfDAclPresent = FALSE;
+				BOOL tfDaclDefaulted = FALSE;
+				status = GetSecurityDescriptorDacl(psd, &tfDAclPresent, &pdacl, &tfDaclDefaulted);
+				Error(L"GetSecurityDescriptorDacl");
+				exit(0);
+				EXPLICIT_ACCESS access;
+				access.grfAccessMode = SET_ACCESS;
+				access.grfAccessPermissions = WINSTA_ALL_ACCESS | READ_CONTROL;
+				access.grfInheritance = NO_INHERITANCE;
+				access.Trustee.TrusteeForm = TRUSTEE_IS_SID;
+				access.Trustee.TrusteeType = TRUSTEE_IS_USER;
+				access.Trustee.ptstrName = (LPWSTR)pUser->User.Sid;
+
+				PACL pnewdacl = NULL;
+				ok = SetEntriesInAcl(1, &access, pdacl,&pnewdacl);
+				Error(L"SetEntriesInAcl");
+
+
+				exit(0);
+
+				ok = CreateProcessAsUserW(hToken, pathImage, sNewCmdLine, NULL, NULL, FALSE, CREATE_NEW_CONSOLE, NULL, NULL, &si, &pi);
 				Error(L"CreateProcessAsUserW");
+
 				exit(0);
 			} else {
 				ok = WTSQueryUserToken(sessionid, &hToken);

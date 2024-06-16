@@ -172,7 +172,7 @@ int main()
 		Error(L"ConvertStringSecurityDescriptorToSecurityDescriptor");
 
 		BOOL tfOwnerDefaulted = FALSE;
-		status = GetSecurityDescriptorOwner(psd, &owner, &tfOwnerDefaulted);
+		ok = GetSecurityDescriptorOwner(psd, &owner, &tfOwnerDefaulted);
 		Error(L"GetSecurityDescriptorOwner");
 
 		if (NULL != owner) {
@@ -183,7 +183,7 @@ int main()
 
 		BOOL tfDaclpresent = FALSE;
 		BOOL tfDaclDefaulted = FALSE;
-		status = GetSecurityDescriptorDacl(psd, &tfDaclpresent, &pdacl, &tfDaclDefaulted);
+		ok = GetSecurityDescriptorDacl(psd, &tfDaclpresent, &pdacl, &tfDaclDefaulted);
 		Error(L"GetSecurityDescriptorDacl");
 
 		if (NULL != pdacl) {
