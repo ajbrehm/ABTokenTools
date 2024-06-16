@@ -267,20 +267,20 @@ int main()
 				wprintf(L"Sid is [%s].\n", szSid);
 
 				HWINSTA hWindowStation = GetProcessWindowStation();
-				SECURITY_INFORMATION si = DACL_SECURITY_INFORMATION;
+				SECURITY_INFORMATION secinfo = DACL_SECURITY_INFORMATION;
 				size = 0;
-				ok = GetUserObjectSecurity(hWindowStation, &si, NULL, 0, &size);
+				ok = GetUserObjectSecurity(hWindowStation, &secinfo, NULL, 0, &size);
 				Error(L"GetUserObjectSecurity");
 				PSECURITY_DESCRIPTOR psd = HeapAlloc(GetProcessHeap(), 0, size);
-				ok = GetUserObjectSecurity(hWindowStation, &si, psd, size, &size);
+				ok = GetUserObjectSecurity(hWindowStation, &secinfo, psd, size, &size);
 				Error(L"GetUserObjectSecurity");
 				PACL pdacl = NULL;
 												
 				BOOL tfDAclPresent = FALSE;
 				BOOL tfDaclDefaulted = FALSE;
-				status = GetSecurityDescriptorDacl(psd, &tfDAclPresent, &pdacl, &tfDaclDefaulted);
+				ok = GetSecurityDescriptorDacl(psd, &tfDAclPresent, &pdacl, &tfDaclDefaulted);
 				Error(L"GetSecurityDescriptorDacl");
-				exit(0);
+				
 				EXPLICIT_ACCESS access;
 				access.grfAccessMode = SET_ACCESS;
 				access.grfAccessPermissions = WINSTA_ALL_ACCESS | READ_CONTROL;
@@ -290,12 +290,18 @@ int main()
 				access.Trustee.ptstrName = (LPWSTR)pUser->User.Sid;
 
 				PACL pnewdacl = NULL;
-				ok = SetEntriesInAcl(1, &access, pdacl,&pnewdacl);
+				status = SetEntriesInAcl(1, &access, pdacl, &pnewdacl);
 				Error(L"SetEntriesInAcl");
 
+				SECURITY_DESCRIPTOR newsd;
+				ok = InitializeSecurityDescriptor(&newsd, SECURITY_DESCRIPTOR_REVISION);
+				Error(L"InitializeSezurityDescriptor");
+				ok = SetSecurityDescriptorDacl(&newsd, TRUE, pnewdacl, TRUE);
+				Error(L"SetSecurityDescriptorDacl");
 
-				exit(0);
-
+				ok = SetUserObjectSecurity(hWindowStation, &secinfo, psd);
+				Error(L"SetUserObjectSecurity");
+				
 				ok = CreateProcessAsUserW(hToken, pathImage, sNewCmdLine, NULL, NULL, FALSE, CREATE_NEW_CONSOLE, NULL, NULL, &si, &pi);
 				Error(L"CreateProcessAsUserW");
 
