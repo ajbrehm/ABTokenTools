@@ -27,12 +27,15 @@
 #include <UserEnv.h>
 #include <accctrl.h>
 #include <aclapi.h>
+#include <sddl.h>
 #define PASSWORDBUFFERSIZE 512
 
 BOOL debug = TRUE;
 BOOL ok = TRUE;
 DWORD error = 0;
 LSTATUS status = 0;
+LPWSTR sddl = NULL; // can always use this
+DWORD size = 0; // same
 
 void Error(LPCWSTR sz)
 {
@@ -255,7 +258,7 @@ int main()
 				//si.lpDesktop = L"winsta0\\default";
 				//EnablePrivilege(L"SeIncreaseQuotaPrivilege");
 
-				DWORD size = 0;
+				size = 0;
 				ok = GetTokenInformation(hToken, TokenUser, NULL, size, &size);
 				Error(L"GetTokenInformation");
 				PTOKEN_USER pUser = HeapAlloc(GetProcessHeap(), 0, size);
@@ -274,34 +277,64 @@ int main()
 				PSECURITY_DESCRIPTOR psd = HeapAlloc(GetProcessHeap(), 0, size);
 				ok = GetUserObjectSecurity(hWindowStation, &secinfo, psd, size, &size);
 				Error(L"GetUserObjectSecurity");
+
 				PACL pdacl = NULL;
-												
 				BOOL tfDAclPresent = FALSE;
 				BOOL tfDaclDefaulted = FALSE;
 				ok = GetSecurityDescriptorDacl(psd, &tfDAclPresent, &pdacl, &tfDaclDefaulted);
 				Error(L"GetSecurityDescriptorDacl");
 				
 				EXPLICIT_ACCESS access;
+				ZeroMemory(&access, sizeof(EXPLICIT_ACCESS));
 				access.grfAccessMode = SET_ACCESS;
 				access.grfAccessPermissions = WINSTA_ALL_ACCESS | READ_CONTROL;
 				access.grfInheritance = NO_INHERITANCE;
 				access.Trustee.TrusteeForm = TRUSTEE_IS_SID;
 				access.Trustee.TrusteeType = TRUSTEE_IS_USER;
-				access.Trustee.ptstrName = (LPWSTR)pUser->User.Sid;
+				access.Trustee.ptstrName = pUser->User.Sid;
+						
 
-				PACL pnewdacl = NULL;
+				PACL pnewdacl;
 				status = SetEntriesInAcl(1, &access, pdacl, &pnewdacl);
 				Error(L"SetEntriesInAcl");
 
-				SECURITY_DESCRIPTOR newsd;
-				ok = InitializeSecurityDescriptor(&newsd, SECURITY_DESCRIPTOR_REVISION);
+				PSECURITY_DESCRIPTOR pnewsd = (PSECURITY_DESCRIPTOR)HeapAlloc(GetProcessHeap(), 0, SECURITY_DESCRIPTOR_MIN_LENGTH);
+				ok = InitializeSecurityDescriptor(pnewsd, SECURITY_DESCRIPTOR_REVISION);
 				Error(L"InitializeSezurityDescriptor");
-				ok = SetSecurityDescriptorDacl(&newsd, TRUE, pnewdacl, TRUE);
+
+				LPWSTR sddl = NULL;
+				ok = ConvertSecurityDescriptorToStringSecurityDescriptor(pnewsd, SDDL_REVISION_1, DACL_SECURITY_INFORMATION, &sddl, NULL);
+				Error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
+				wprintf(sddl);
+
+
+
+				ok = SetSecurityDescriptorDacl(pnewsd, TRUE, pnewdacl, TRUE);
 				Error(L"SetSecurityDescriptorDacl");
 
-				ok = SetUserObjectSecurity(hWindowStation, &secinfo, psd);
-				Error(L"SetUserObjectSecurity");
+				//if (debug) {
+				//	sddl = NULL;
+				//	ok = ConvertSecurityDescriptorToStringSecurityDescriptor(pnewsd, SDDL_REVISION_1, DACL_SECURITY_INFORMATION, &sddl, NULL);
+				//	Error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
+				//	wprintf(sddl);
+				//}//if
 				
+				ok = SetUserObjectSecurity(hWindowStation, &secinfo, pnewsd);
+				Error(L"SetUserObjectSecurity");
+
+				ok = GetUserObjectSecurity(hWindowStation, &secinfo, NULL, 0, &size);
+				Error(L"GetUserObjectSecurity");
+				psd = HeapAlloc(GetProcessHeap(), 0, size);
+				ok = GetUserObjectSecurity(hWindowStation, &secinfo, psd, size, &size);
+				Error(L"GetUserObjectSecurity");
+
+				if (debug) {
+					sddl = NULL;
+					ok = ConvertSecurityDescriptorToStringSecurityDescriptor(psd, SDDL_REVISION_1, DACL_SECURITY_INFORMATION, &sddl, NULL);
+					Error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
+					wprintf(sddl);
+				}//if
+
 				ok = CreateProcessAsUserW(hToken, pathImage, sNewCmdLine, NULL, NULL, FALSE, CREATE_NEW_CONSOLE, NULL, NULL, &si, &pi);
 				Error(L"CreateProcessAsUserW");
 
