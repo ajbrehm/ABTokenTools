@@ -138,7 +138,7 @@ void Help()
 	wprintf(L"#2: RunJob /Image pathImage [/JobProcessLimit limit] [/Domain sDomain] /User sUser [/Password sPassword] /SessionId sessionid [/args ...] (creates a process in another session)\n\n");
 	wprintf(L"#3: RunJob /Image pathImage [/JobProcessLimit limit] /SessionId sessionid [/args ...] (creates a process in another session as that session's user)\n\n");
 	wprintf(L"#4: RunJob /Image pathImage /UseRunAs [/args ...] (spawns a process using RunAs verb)\n\n");
-	wprintf(L"#5: RunJob /WindowStationPermission [/Domain sDomain] /User sUser(allows user access to session window station, use before #2)\n\n");
+	wprintf(L"#5: RunJob /WindowStationPermission [/Domain sDomain] /User sUser (allows user access to session window station, use before #2)\n\n");
 	exit(0);
 }
 
