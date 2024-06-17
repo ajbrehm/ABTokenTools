@@ -9,7 +9,7 @@ BOOL ok = FALSE;
 DWORD error = 0;
 LPWSTR pathObject = (LPWSTR)L""; // a path to an object
 LPWSTR sddl; // an sddl for a dacl
-PSECURITY_DESCRIPTOR psd = NULL; // a pointer to a security descriptor
+PSECURITY_DESCRIPTOR pSD = NULL; // a pointer to a security descriptor
 PACL pdacl = NULL; // a pointer to a DACL
 PSID owner = NULL; // a pointer to an owner
 BOOL debug = FALSE;
@@ -168,11 +168,11 @@ int main()
 		sddl = aCommandLine[3];
 		if (debug) { fwprintf(stderr, L"SDDL given:\t%s\n", sddl); }
 
-		ok = ConvertStringSecurityDescriptorToSecurityDescriptor(sddl, SDDL_REVISION_1, &psd, NULL);
+		ok = ConvertStringSecurityDescriptorToSecurityDescriptor(sddl, SDDL_REVISION_1, &pSD, NULL);
 		Error(L"ConvertStringSecurityDescriptorToSecurityDescriptor");
 
 		BOOL tfOwnerDefaulted = FALSE;
-		ok = GetSecurityDescriptorOwner(psd, &owner, &tfOwnerDefaulted);
+		ok = GetSecurityDescriptorOwner(pSD, &owner, &tfOwnerDefaulted);
 		Error(L"GetSecurityDescriptorOwner");
 
 		if (NULL != owner) {
@@ -183,7 +183,7 @@ int main()
 
 		BOOL tfDaclpresent = FALSE;
 		BOOL tfDaclDefaulted = FALSE;
-		ok = GetSecurityDescriptorDacl(psd, &tfDaclpresent, &pdacl, &tfDaclDefaulted);
+		ok = GetSecurityDescriptorDacl(pSD, &tfDaclpresent, &pdacl, &tfDaclDefaulted);
 		Error(L"GetSecurityDescriptorDacl");
 
 		if (NULL != pdacl) {
@@ -192,12 +192,12 @@ int main()
 
 	}//if
 
-	GetSecurityInfoWrapper(handle, pathObject, (SE_OBJECT_TYPE)objecttype, DACL_AND_OWNER_SECURITY_INFORMATION, NULL, NULL, NULL, NULL, &psd);
-	ok = ConvertSecurityDescriptorToStringSecurityDescriptor(psd, SDDL_REVISION_1, DACL_AND_OWNER_SECURITY_INFORMATION, &sddl, NULL);
+	GetSecurityInfoWrapper(handle, pathObject, (SE_OBJECT_TYPE)objecttype, DACL_AND_OWNER_SECURITY_INFORMATION, NULL, NULL, NULL, NULL, &pSD);
+	ok = ConvertSecurityDescriptorToStringSecurityDescriptor(pSD, SDDL_REVISION_1, DACL_AND_OWNER_SECURITY_INFORMATION, &sddl, NULL);
 	Error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
 	wprintf(L"%s\n", sddl);
 	LocalFree(sddl);
-	LocalFree(psd);
+	LocalFree(pSD);
 
 	if (pid) {
 		CloseHandle(handle);
