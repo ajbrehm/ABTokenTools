@@ -62,13 +62,77 @@ void EnablePrivilege(LPWSTR sPrivilegeName)
 	Error(L"AdjustTokenPrivileges");
 }
 
+void SetWindowStationSecurity(PSID pSid)
+{
+	HWINSTA hWindowStation = GetProcessWindowStation();
+	SECURITY_INFORMATION secinfo = DACL_SECURITY_INFORMATION;
+	size = 0;
+	ok = GetUserObjectSecurity(hWindowStation, &secinfo, NULL, 0, &size);
+	Error(L"GetUserObjectSecurity");
+	PSECURITY_DESCRIPTOR psd = HeapAlloc(GetProcessHeap(), 0, size);
+	if (!psd) { exit(1); }
+	ok = GetUserObjectSecurity(hWindowStation, &secinfo, psd, size, &size);
+	Error(L"GetUserObjectSecurity");
+
+	PACL pdacl = NULL;
+	BOOL tfDAclPresent = FALSE;
+	BOOL tfDaclDefaulted = FALSE;
+	ok = GetSecurityDescriptorDacl(psd, &tfDAclPresent, &pdacl, &tfDaclDefaulted);
+	Error(L"GetSecurityDescriptorDacl");
+
+	if (debug) {
+		sddl = NULL;
+		ok = ConvertSecurityDescriptorToStringSecurityDescriptor(psd, SDDL_REVISION_1, DACL_SECURITY_INFORMATION, &sddl, NULL);
+		Error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
+		wprintf(L"sddl before: [%s]\n", sddl);
+	}//if
+
+	EXPLICIT_ACCESS access;
+	ZeroMemory(&access, sizeof(EXPLICIT_ACCESS));
+	access.grfAccessMode = SET_ACCESS;
+	access.grfAccessPermissions = WINSTA_ALL_ACCESS | READ_CONTROL;
+	access.grfInheritance = NO_INHERITANCE;
+	access.Trustee.TrusteeForm = TRUSTEE_IS_SID;
+	access.Trustee.TrusteeType = TRUSTEE_IS_USER;
+	access.Trustee.ptstrName = pSid;
+
+	PACL pnewdacl;
+	status = SetEntriesInAcl(1, &access, pdacl, &pnewdacl);
+	Error(L"SetEntriesInAcl");
+
+	PSECURITY_DESCRIPTOR pnewsd = (PSECURITY_DESCRIPTOR)HeapAlloc(GetProcessHeap(), 0, SECURITY_DESCRIPTOR_MIN_LENGTH);
+	if (!pnewsd) { exit(1); }
+	ok = InitializeSecurityDescriptor(pnewsd, SECURITY_DESCRIPTOR_REVISION);
+	Error(L"InitializeSezurityDescriptor");
+
+	ok = SetSecurityDescriptorDacl(pnewsd, TRUE, pnewdacl, TRUE);
+	Error(L"SetSecurityDescriptorDacl");
+
+	ok = SetUserObjectSecurity(hWindowStation, &secinfo, pnewsd);
+	Error(L"SetUserObjectSecurity");
+
+	ok = GetUserObjectSecurity(hWindowStation, &secinfo, NULL, 0, &size);
+	Error(L"GetUserObjectSecurity");
+	psd = HeapAlloc(GetProcessHeap(), 0, size);
+	if (!psd) { exit(1); }
+	ok = GetUserObjectSecurity(hWindowStation, &secinfo, psd, size, &size);
+	Error(L"GetUserObjectSecurity");
+
+	if (debug) {
+		sddl = NULL;
+		ok = ConvertSecurityDescriptorToStringSecurityDescriptor(psd, SDDL_REVISION_1, DACL_SECURITY_INFORMATION, &sddl, NULL);
+		Error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
+		wprintf(L"sddl after: [%s]\n", sddl);
+	}//if
+
+}
+
 void Help()
 {
-	//LPWSTR sHelp = L"Usage: RunJob [/PId pid] [/Image pathImage] [/JobProcessLimit processlimit] [/JobName sJobName] [/SessionId sessionid] [/Domain sDomain] [/User sUser] [/Password sPassword] [/args ...]\n";
-	//wprintf(sHelp);
-	wprintf(L"\nRunJob /PId pid /JobProcessLimit limit (appplies quota to running process)\n\n");
-	wprintf(L"RunJob /Image pathImage [/JobProcessLimit limit] [[[/Domain sDomain] /User sUser] /Password sPassword] [/SessionId id] [/args ...] (creates a process)\n\n");
-	wprintf(L"RunJob /Image pathImage /UseRunAs [/args ...] (spawns a process using RunAs verb)\n\n");
+	wprintf(L"\n#0: RunJob /PId pid /JobProcessLimit limit (appplies quota to running process)\n\n");
+	wprintf(L"#1: RunJob /Image pathImage [/JobProcessLimit limit] [[[/Domain sDomain] /User sUser] /Password sPassword] [/SessionId id] [/args ...] (creates a process with various attributes)\n\n");
+	wprintf(L"#2: RunJob /Image pathImage /UseRunAs [/args ...] (spawns a process using RunAs verb)\n\n");
+	wprintf(L"#3: RunJob /WindowStationPermission /DomainUser sDomainUser (allows user access to session window station, use before #1)\n\n");
 	exit(0);
 }
 
@@ -112,6 +176,8 @@ int main()
 	BOOL tfCreateJob = FALSE;
 	BOOL tfRunAs = FALSE;
 	BOOL tfCreateProcessThenRunAs = FALSE;
+	BOOL tfWindowStationPermission = FALSE;
+	LPWSTR sDomainUser = NULL;
 
 	for (int i = 1; i < args; i++) {
 		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCmdLine[i], -1, L"/args", 5, NULL, NULL, 0)) {
@@ -160,13 +226,51 @@ int main()
 		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCmdLine[i], -1, L"/UseRunAs", 9, NULL, NULL, 0)) {
 			tfRunAs = TRUE;
 		}//if
+		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCmdLine[i], -1, L"/WindowStationPermission", 24, NULL, NULL, 0)) {
+			tfWindowStationPermission = TRUE;
+		}//if
+		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCmdLine[i], -1, L"/DomainUser", 11, NULL, NULL, 0)) {
+			sDomainUser = aCmdLine[i + 1];
+		}//if
 	}//for
 
 	// check for missing image or pid
-	if ((tfPid && tfImage) || (!tfPid && !tfImage)) {
-		wprintf(L"pathImage or pid are mandatory.\n");
+	if ((!tfPid)&&(!pathImage)&&(!tfWindowStationPermission)) {
+		wprintf(L"pathImage or pid are mandatory unless setting permissions.\n");
 		return 0;
 	}//if
+
+	if (tfWindowStationPermission) {
+
+		if (!sDomainUser) {
+			wprintf(L"DomainUser is missing.\n");
+			exit(1);
+		}//if
+
+		DWORD cbSid = 0;
+		SID_NAME_USE use = 0;
+		DWORD cchReferencedDomainName = 0;
+		LookupAccountNameW(NULL, sDomainUser, NULL, &cbSid, NULL, &cchReferencedDomainName, &use);
+		Error(L"LookupAccountNameW");
+		PSID pSid = HeapAlloc(GetProcessHeap(), 0, cbSid);
+		LPWSTR sDomainName = HeapAlloc(GetProcessHeap(), 0, cchReferencedDomainName * sizeof(WCHAR));
+		LookupAccountNameW(NULL, sDomainUser, pSid, &cbSid, sDomainName, &cchReferencedDomainName, &use);
+		Error(L"LookupAccountNameW");
+
+		if (debug) {
+			LPWSTR szSid = L"SID was not translated";
+			wprintf(L"%s\n", szSid);
+			if (NULL != pSid) { ConvertSidToStringSidW(pSid, &szSid); }
+			wprintf(L"%s\n", szSid);
+			LocalFree(szSid);
+		}//if
+
+		SetWindowStationSecurity(pSid);
+
+		exit(0);
+
+	}//if
+
 
 	// find args for client program
 	LPWSTR sNewCmdLine = NULL;
@@ -183,6 +287,7 @@ int main()
 
 	// spawn process
 	if (tfRunAs) {
+		if (!pathImage) { exit(1); }
 		if (debug) { wprintf(L"Spawning process with RunAs...\n"); }
 		ShellExecuteW(NULL, L"RunAs", pathImage, sNewCmdLine, NULL, SW_NORMAL);
 		error = GetLastError();
@@ -206,6 +311,7 @@ int main()
 		if (!sPassword) {
 			wprintf(L"Enter password (which will NOT be echoed):");
 			sPassword = (LPWSTR)GlobalAlloc(0, PASSWORDBUFFERSIZE);
+			if (!sPassword) { exit(1); }
 			DWORD i = 0;
 			WCHAR c;
 			while ((c = _getwch()) != L'\r') {
@@ -239,24 +345,8 @@ int main()
 				ok = LogonUserW(sUser, sDomain, sPassword, LOGON32_LOGON_INTERACTIVE, LOGON32_PROVIDER_WINNT50, &hToken);
 				Error(L"LogonUserW");
 
-				//PROFILEINFOW profile;
-				//profile.dwSize = sizeof(PROFILEINFO);
-				//profile.lpUserName = sUser;
-				//ok = LoadUserProfileW(hToken, &profile);
-				//Error(L"LoadUserProfileW");
-				//LPVOID lpEnvironment = NULL;
-				//ok = CreateEnvironmentBlock(&lpEnvironment, hToken, TRUE);
-				//Error(L"CreateEnvironmentBlock");
-
-				//HANDLE hDuplicateToken = NULL;
-				//ok = DuplicateTokenEx(hToken, TOKEN_ADJUST_SESSIONID|TOKEN_QUERY|TOKEN_ALL_ACCESS, NULL, SecurityImpersonation, TokenPrimary, &hDuplicateToken);
-				//Error(L"DuplicateTokenEx");
-				//EnablePrivilege(L"SeTcbPrivilege");
-				//ok = SetTokenInformation(hDuplicateToken, TokenSessionId, &sessionid, sizeof(DWORD));
-				//Error(L"SetTokenInformation");
-
-				//si.lpDesktop = L"winsta0\\default";
-				//EnablePrivilege(L"SeIncreaseQuotaPrivilege");
+			
+				EnablePrivilege(L"SeIncreaseQuotaPrivilege");
 
 				size = 0;
 				ok = GetTokenInformation(hToken, TokenUser, NULL, size, &size);
