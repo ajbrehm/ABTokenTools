@@ -132,8 +132,9 @@ void SetWindowStationSecurity(PSID pSid)
 
 void Help()
 {
-	wprintf(L"\n#0: RunJob /PId pid /JobProcessLimit limit (appplies quota to running process)\n\n");
-	wprintf(L"#1: RunJob /Image pathImage [/JobProcessLimit limit] [[[/Domain sDomain] /User sUser] /Password sPassword] [/args ...] (creates a process with various attributes)\n\n");
+	wprintf(L"\n");
+	wprintf(L"#0: RunJob /PId pid /JobProcessLimit limit (appplies quota to running process)\n\n");
+	wprintf(L"#1: RunJob /Image pathImage [/JobProcessLimit limit] [[/Domain sDomain] /User sUser] [/Password sPassword] [/args ...] (creates a process with various attributes)\n\n");
 	wprintf(L"#2: RunJob /Image pathImage [/JobProcessLimit limit] [/Domain sDomain] /User sUser [/Password sPassword] /SessionId sessionid [/args ...] (creates a process in another session)\n\n");
 	wprintf(L"#3: RunJob /Image pathImage [/JobProcessLimit limit] /SessionId sessionid [/args ...] (creates a process in another session as that session's user)\n\n");
 	wprintf(L"#4: RunJob /Image pathImage /UseRunAs [/args ...] (spawns a process using RunAs verb)\n\n");
