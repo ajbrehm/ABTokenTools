@@ -54,12 +54,10 @@ void EnablePrivilege(LPWSTR sPrivilegeName)
 	TOKEN_PRIVILEGES privs;
 	LUID luid;
 	ok = LookupPrivilegeValue(NULL, sPrivilegeName, &luid);
-	Error(L"LookupPrivilegeValue");
 	privs.PrivilegeCount = 1;
 	privs.Privileges[0].Luid = luid;
 	privs.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
 	ok = AdjustTokenPrivileges(hCurrentProcessToken, FALSE, &privs, sizeof(TOKEN_PRIVILEGES), NULL, NULL);
-	Error(L"AdjustTokenPrivileges");
 }
 
 void SetWindowStationSecurity(PSID pSid)
@@ -359,12 +357,35 @@ int main()
 				ok = LogonUserW(sUser, sDomain, sPassword, LOGON32_LOGON_INTERACTIVE, LOGON32_PROVIDER_WINNT50, &hToken);
 				Error(L"LogonUserW");
 			
+				ok = GetTokenInformation(hToken, TokenElevationType, NULL, 0, &size);
+				PTOKEN_ELEVATION_TYPE pType = HeapAlloc(GetProcessHeap(), 0, size);
+				ok = GetTokenInformation(hToken, TokenElevationType, pType, size, &size);
+				TOKEN_ELEVATION_TYPE type = *pType;
+				if (debug) { wprintf(L"Token elevation type is [%d]. (1=default, 2=elevated, 3=limited)\n", type); }
+				HeapFree(GetProcessHeap(), 0, pType);
+
+				if (3 == type) {
+					ok = GetTokenInformation(hToken, TokenLinkedToken, NULL, 0, &size);
+					PTOKEN_LINKED_TOKEN pLinkedToken = HeapAlloc(GetProcessHeap(), 0, size);
+					ok = GetTokenInformation(hToken, TokenLinkedToken, pLinkedToken, size, &size);
+					CloseHandle(hToken);
+					hToken = pLinkedToken->LinkedToken;
+				}//if
+
+				ok = GetTokenInformation(hToken, TokenElevationType, NULL, 0, &size);
+				pType = HeapAlloc(GetProcessHeap(), 0, size);
+				ok = GetTokenInformation(hToken, TokenElevationType, pType, size, &size);
+				type = *pType;
+				if (debug) { wprintf(L"Token elevation type is [%d]. (1=default, 2=elevated, 3=limited)\n", type); }
+				HeapFree(GetProcessHeap(), 0, pType);
+
 				EnablePrivilege(L"SeTcbPrivilege");
 				ok = SetTokenInformation(hToken, TokenSessionId, &sessionid, sizeof(DWORD));
 				Error(L"SetTokenInformation");
 
 				EnablePrivilege(L"SeIncreaseQuotaPrivilege");
 				EnablePrivilege(L"SeAssignPrimaryTokenPrivilege");
+				EnablePrivilege(L"SeImpersonatePrivilege");
 
 				ok = CreateProcessAsUserW(hToken, pathImage, sNewCmdLine, NULL, NULL, FALSE, dwCreationFlags, NULL, NULL, &si, &pi);
 				Error(L"CreateProcessAsUserW");
