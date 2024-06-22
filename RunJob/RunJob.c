@@ -30,7 +30,7 @@
 #include <sddl.h>
 #define PASSWORDBUFFERSIZE 512
 
-BOOL debug = TRUE;
+BOOL debug = FALSE;
 BOOL ok = TRUE;
 DWORD error = 0;
 LSTATUS status = 0;
