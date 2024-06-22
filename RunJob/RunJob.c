@@ -304,7 +304,7 @@ int main()
 		}//if
 		DWORD cchUser = wcslen(sUser);
 		DWORD cchDomain = wcslen(sDomain);
-		DWORD cchDomainUser = cchDomain + 1 + cchUser;
+		DWORD cchDomainUser = cchDomain + 1 + cchUser + 1;
 		LPWSTR sDomainUser = HeapAlloc(GetProcessHeap(), 0, cchDomainUser * sizeof(WCHAR));
 		if (!sDomainUser) { exit(1); }
 		wcscpy_s(sDomainUser, cchDomain+1, sDomain);
