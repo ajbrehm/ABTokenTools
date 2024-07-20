@@ -24,12 +24,18 @@
 #include <wchar.h>
 #include <WtsApi32.h>
 #include <sysinfoapi.h>
+#include <UserEnv.h>
+#include <accctrl.h>
+#include <aclapi.h>
+#include <sddl.h>
 #define PASSWORDBUFFERSIZE 512
 
 BOOL debug = FALSE;
 BOOL ok = TRUE;
 DWORD error = 0;
 LSTATUS status = 0;
+LPWSTR sddl = NULL; // can always use this
+DWORD size = 0; // same
 
 void Error(LPCWSTR sz)
 {
@@ -48,23 +54,101 @@ void EnablePrivilege(LPWSTR sPrivilegeName)
 	TOKEN_PRIVILEGES privs;
 	LUID luid;
 	ok = LookupPrivilegeValue(NULL, sPrivilegeName, &luid);
-	Error(L"LookupPrivilegeValue");
 	privs.PrivilegeCount = 1;
 	privs.Privileges[0].Luid = luid;
 	privs.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
 	ok = AdjustTokenPrivileges(hCurrentProcessToken, FALSE, &privs, sizeof(TOKEN_PRIVILEGES), NULL, NULL);
-	Error(L"AdjustTokenPrivileges");
+}
+
+void SetWindowStationSecurity(PSID pSid)
+{
+	HWINSTA hWindowStation = GetProcessWindowStation();
+	SECURITY_INFORMATION secinfo = DACL_SECURITY_INFORMATION;
+	size = 0;
+	ok = GetUserObjectSecurity(hWindowStation, &secinfo, NULL, 0, &size);
+	Error(L"GetUserObjectSecurity");
+	PSECURITY_DESCRIPTOR pSD = HeapAlloc(GetProcessHeap(), 0, size);
+	if (!pSD) { exit(1); }
+	ok = GetUserObjectSecurity(hWindowStation, &secinfo, pSD, size, &size);
+	Error(L"GetUserObjectSecurity");
+
+	PACL pDACL = NULL;
+	BOOL tfDAclPresent = FALSE;
+	BOOL tfDaclDefaulted = FALSE;
+	ok = GetSecurityDescriptorDacl(pSD, &tfDAclPresent, &pDACL, &tfDaclDefaulted);
+	Error(L"GetSecurityDescriptorDacl");
+
+	if (debug) {
+		sddl = NULL;
+		ok = ConvertSecurityDescriptorToStringSecurityDescriptor(pSD, SDDL_REVISION_1, DACL_SECURITY_INFORMATION, &sddl, NULL);
+		Error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
+		wprintf(L"sddl before: [%s]\n", sddl);
+	}//if
+
+	EXPLICIT_ACCESS access;
+	ZeroMemory(&access, sizeof(EXPLICIT_ACCESS));
+	access.grfAccessMode = SET_ACCESS;
+	access.grfAccessPermissions = WINSTA_ALL_ACCESS | READ_CONTROL;
+	access.grfInheritance = NO_INHERITANCE;
+	access.Trustee.TrusteeForm = TRUSTEE_IS_SID;
+	access.Trustee.TrusteeType = TRUSTEE_IS_USER;
+	access.Trustee.ptstrName = pSid;
+
+	PACL pNewDACL;
+	status = SetEntriesInAcl(1, &access, pDACL, &pNewDACL);
+	Error(L"SetEntriesInAcl");
+
+	PSECURITY_DESCRIPTOR pNewSD = (PSECURITY_DESCRIPTOR)HeapAlloc(GetProcessHeap(), 0, SECURITY_DESCRIPTOR_MIN_LENGTH);
+	if (!pNewSD) { exit(1); }
+	ok = InitializeSecurityDescriptor(pNewSD, SECURITY_DESCRIPTOR_REVISION);
+	Error(L"InitializeSezurityDescriptor");
+
+	ok = SetSecurityDescriptorDacl(pNewSD, TRUE, pNewDACL, TRUE);
+	Error(L"SetSecurityDescriptorDacl");
+
+	ok = SetUserObjectSecurity(hWindowStation, &secinfo, pNewSD);
+	Error(L"SetUserObjectSecurity");
+
+	ok = GetUserObjectSecurity(hWindowStation, &secinfo, NULL, 0, &size);
+	Error(L"GetUserObjectSecurity");
+	PSECURITY_DESCRIPTOR pUltimateSD = HeapAlloc(GetProcessHeap(), 0, size);
+	if (!pSD) { exit(1); }
+	ok = GetUserObjectSecurity(hWindowStation, &secinfo, pSD, size, &size);
+	Error(L"GetUserObjectSecurity");
+
+	if (debug) {
+		sddl = NULL;
+		ok = ConvertSecurityDescriptorToStringSecurityDescriptor(pSD, SDDL_REVISION_1, DACL_SECURITY_INFORMATION, &sddl, NULL);
+		Error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
+		wprintf(L"sddl after: [%s]\n", sddl);
+	}//if
+
+	HeapFree(GetProcessHeap(),0,pSD);
+	HeapFree(GetProcessHeap(), 0, pNewSD);
+	HeapFree(GetProcessHeap(), 0, pUltimateSD);
 }
 
 void Help()
 {
-	LPWSTR sHelp = L"Usage: RunJob [/PId pid] [/Image pathImage] [/JobProcessLimit processlimit] [/JobName sJobName] [/SessionId sessionid] [/Domain sDomain] [/User sUser] [/Password sPassword] [/args ...]\n";
-	wprintf(sHelp);
+	wprintf(L"\n");
+	wprintf(L"#0: RunJob /PId pid /JobProcessLimit limit (appplies quota to running process)\n\n");
+	wprintf(L"#1: RunJob /Image pathImage [/JobProcessLimit limit] [[/Domain sDomain] /User sUser] [/Password sPassword] [/args ...] (creates a process with various attributes)\n\n");
+	wprintf(L"#2: RunJob /Image pathImage [/JobProcessLimit limit] [/Domain sDomain] /User sUser [/Password sPassword] /SessionId sessionid [/LoadProfile] [/args ...] (creates a process in another session)\n\n");
+	wprintf(L"#3: RunJob /Image pathImage [/JobProcessLimit limit] /SessionId sessionid [/args ...] (creates a process in another session as that session's user)\n\n");
+	wprintf(L"#4: RunJob /Image pathImage /UseRunAs [/args ...] (spawns a process using RunAs verb)\n\n");
+	wprintf(L"#5: RunJob /WindowStationPermission [/Domain sDomain] /User sUser (allows user access to session window station, use before #2)\n\n");
 	exit(0);
 }
 
 int main()
 {
+	//// do not debug if running in session 0
+	//DWORD mysessionid = 65536;
+	//ok = ProcessIdToSessionId(GetCurrentProcessId(), &mysessionid);
+	//Error(L"ProcessIdToSessionId");
+	//if (0 == mysessionid) { debug = FALSE; }
+	//if (debug) { wprintf(L"Not running in session 0.\n"); }
+
 	// read command line
 	LPWSTR sCmdLine = GetCommandLineW();
 	int args = 0;
@@ -80,6 +164,7 @@ int main()
 	}//if
 
 	// get arguments
+	BOOL tfArgs = FALSE;
 	BOOL tfPid = FALSE;
 	DWORD pid = -1;
 	BOOL tfImage = FALSE;
@@ -93,9 +178,13 @@ int main()
 	DWORD cDomainUserPassword = 0;
 	LPWSTR sJobName = L"UnnamedJob";
 	BOOL tfCreateJob = FALSE;
-	
+	BOOL tfRunAs = FALSE;
+	BOOL tfWindowStationPermission = FALSE;
+	BOOL tfLoadProfile = FALSE;
+
 	for (int i = 1; i < args; i++) {
 		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCmdLine[i], -1, L"/args", 5, NULL, NULL, 0)) {
+			tfArgs = TRUE;
 			break;
 		}//if
 		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCmdLine[i], -1, L"/PId", 4, NULL, NULL, 0)) {
@@ -137,23 +226,45 @@ int main()
 			sJobName = aCmdLine[i + 1];
 			tfCreateJob = TRUE;
 		}//if
+		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCmdLine[i], -1, L"/UseRunAs", 9, NULL, NULL, 0)) {
+			tfRunAs = TRUE;
+		}//if
+		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCmdLine[i], -1, L"/WindowStationPermission", 24, NULL, NULL, 0)) {
+			tfWindowStationPermission = TRUE;
+		}//if
+		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCmdLine[i], -1, L"/LoadProfile", 12, NULL, NULL, 0)) {
+			tfLoadProfile = TRUE;
+		}//if
 	}//for
-	
+
 	// check for missing image or pid
-	if ((tfPid && tfImage) || (!tfPid && !tfImage)) {
-		wprintf(L"pathImage or pid are mandatory.\n");
+	if ((!tfPid)&&(!pathImage)&&(!tfWindowStationPermission)) {
+		wprintf(L"pathImage or pid are mandatory unless setting permissions.\n");
 		return 0;
 	}//if
 
 	// find args for client program
-	LPWSTR sNewCmdLine = wcsstr(sCmdLine, L"/args");
-	if (NULL == sNewCmdLine) { sNewCmdLine = L""; }
-	size_t length = wcslen(L"/args");
-	sNewCmdLine += length + 1;
+	LPWSTR sNewCmdLine = NULL;
+	if (tfArgs) {
+		sNewCmdLine = wcsstr(sCmdLine, L"/args");
+		if (NULL == sNewCmdLine) { sNewCmdLine = L""; }
+		size_t length = wcslen(L"/args");
+		sNewCmdLine += length + 1;
+	}//if
 
 	// configure process creation flags
 	DWORD dwCreationFlags = 0;
 	if (tfCreateJob) { dwCreationFlags += CREATE_SUSPENDED; }
+
+	// spawn process
+	if (tfRunAs) {
+		if (!pathImage) { exit(1); }
+		if (debug) { wprintf(L"Spawning process with RunAs...\n"); }
+		ShellExecuteW(NULL, L"RunAs", pathImage, sNewCmdLine, NULL, SW_NORMAL);
+		error = GetLastError();
+		Error(L"ShellExecuteW");
+		return error;
+	}//if
 
 	// check for domain, user, and password
 	if (cDomainUserPassword) {
@@ -168,9 +279,10 @@ int main()
 			sDomain = sComputerName;
 			cDomainUserPassword++;
 		}//if
-		if (!sPassword) {
+		if ((!sPassword)&&(!tfWindowStationPermission)) {
 			wprintf(L"Enter password (which will NOT be echoed):");
 			sPassword = (LPWSTR)GlobalAlloc(0, PASSWORDBUFFERSIZE);
+			if (!sPassword) { exit(1); }
 			DWORD i = 0;
 			WCHAR c;
 			while ((c = _getwch()) != L'\r') {
@@ -186,6 +298,51 @@ int main()
 		}//if
 	}//if
 
+	if (tfWindowStationPermission) {
+
+		if (debug) { wprintf(L"Window station permissions\n"); }
+
+		if ((!sUser) || (!sDomain)) {
+			wprintf(L"Missing user name or unclear domain namen.\n");
+			exit(1);
+		}//if
+		DWORD cchUser = wcslen(sUser);
+		DWORD cchDomain = wcslen(sDomain);
+		DWORD cchDomainUser = cchDomain + 1 + cchUser + 1;
+		LPWSTR sDomainUser = HeapAlloc(GetProcessHeap(), 0, cchDomainUser * sizeof(WCHAR));
+		if (!sDomainUser) { exit(1); }
+		wcscpy_s(sDomainUser, cchDomain+1, sDomain);
+		Error(L"wcscpy_s");
+		sDomainUser[cchDomain] = '\\';
+		wcscpy_s(sDomainUser+cchDomain+1, cchUser+1, sUser);
+		Error(L"wcscpy_s");
+		if (debug) { wprintf(L"DomainUser [%s]\n", sDomainUser); }
+
+		DWORD cbSid = 0;
+		SID_NAME_USE use = 0;
+		DWORD cchReferencedDomainName = 0;
+		LookupAccountNameW(NULL, sDomainUser, NULL, &cbSid, NULL, &cchReferencedDomainName, &use);
+		Error(L"LookupAccountNameW");
+		PSID pSid = HeapAlloc(GetProcessHeap(), 0, cbSid);
+		LPWSTR sDomainName = HeapAlloc(GetProcessHeap(), 0, cchReferencedDomainName * sizeof(WCHAR));
+		LookupAccountNameW(NULL, sDomainUser, pSid, &cbSid, sDomainName, &cchReferencedDomainName, &use);
+		Error(L"LookupAccountNameW");
+
+		if (debug) {
+			LPWSTR szSid = L"SID was not translated";
+			wprintf(L"%s\n", szSid);
+			if (NULL != pSid) { ConvertSidToStringSidW(pSid, &szSid); }
+			wprintf(L"%s\n", szSid);
+			LocalFree(szSid);
+		}//if
+
+		SetWindowStationSecurity(pSid);
+
+		exit(0);
+
+	}//if
+
+
 	// start process
 	PROCESS_INFORMATION pi;
 	if (tfImage) {
@@ -197,11 +354,59 @@ int main()
 		dwCreationFlags += CREATE_NEW_CONSOLE;
 
 		if (sessionid != 65536) {
-			HANDLE hToken;
-			ok = WTSQueryUserToken(sessionid, &hToken);
-			Error(L"WTSQueryUserToken");
-			CreateProcessAsUserW(hToken, pathImage, sNewCmdLine, NULL, NULL, FALSE, dwCreationFlags, NULL, NULL, &si, &pi);
-			Error(L"CreateProcessAsUserW");
+			HANDLE hToken = NULL;
+			if (3 == cDomainUserPassword) {
+				if (debug) { wprintf(L"SessionId is [%d]. User is [%s]. Domain is [%s]. Password is [%s].\n", sessionid, sUser, sDomain, sPassword); }
+
+				ok = LogonUserW(sUser, sDomain, sPassword, LOGON32_LOGON_INTERACTIVE, LOGON32_PROVIDER_WINNT50, &hToken);
+				Error(L"LogonUserW");
+			
+				ok = GetTokenInformation(hToken, TokenElevationType, NULL, 0, &size);
+				PTOKEN_ELEVATION_TYPE pType = HeapAlloc(GetProcessHeap(), 0, size);
+				ok = GetTokenInformation(hToken, TokenElevationType, pType, size, &size);
+				TOKEN_ELEVATION_TYPE type = *pType;
+				if (debug) { wprintf(L"Token elevation type is [%d]. (1=default, 2=elevated, 3=limited)\n", type); }
+				HeapFree(GetProcessHeap(), 0, pType);
+
+				if (3 == type) {
+					ok = GetTokenInformation(hToken, TokenLinkedToken, NULL, 0, &size);
+					PTOKEN_LINKED_TOKEN pLinkedToken = HeapAlloc(GetProcessHeap(), 0, size);
+					ok = GetTokenInformation(hToken, TokenLinkedToken, pLinkedToken, size, &size);
+					CloseHandle(hToken);
+					hToken = pLinkedToken->LinkedToken;
+				}//if
+
+				ok = GetTokenInformation(hToken, TokenElevationType, NULL, 0, &size);
+				pType = HeapAlloc(GetProcessHeap(), 0, size);
+				ok = GetTokenInformation(hToken, TokenElevationType, pType, size, &size);
+				type = *pType;
+				if (debug) { wprintf(L"Token elevation type is [%d]. (1=default, 2=elevated, 3=limited)\n", type); }
+				HeapFree(GetProcessHeap(), 0, pType);
+
+				if (tfLoadProfile) {
+					PROFILEINFOW profile;
+					profile.dwSize - sizeof(PROFILEINFOW);
+					ok = LoadUserProfileW(hToken, &profile);
+				}//if
+
+				EnablePrivilege(L"SeTcbPrivilege");
+				ok = SetTokenInformation(hToken, TokenSessionId, &sessionid, sizeof(DWORD));
+				Error(L"SetTokenInformation");
+
+				EnablePrivilege(L"SeIncreaseQuotaPrivilege");
+				EnablePrivilege(L"SeAssignPrimaryTokenPrivilege");
+				EnablePrivilege(L"SeImpersonatePrivilege");
+
+				ok = CreateProcessAsUserW(hToken, pathImage, sNewCmdLine, NULL, NULL, FALSE, dwCreationFlags, NULL, NULL, &si, &pi);
+				Error(L"CreateProcessAsUserW");
+
+			} else {
+				ok = WTSQueryUserToken(sessionid, &hToken);
+				Error(L"WTSQueryUserToken");
+				CreateProcessAsUserW(hToken, pathImage, sNewCmdLine, NULL, NULL, FALSE, dwCreationFlags, NULL, NULL, &si, &pi);
+				Error(L"CreateProcessAsUserW");
+
+			}//if
 			CloseHandle(hToken);
 		} else {
 			if (3 == cDomainUserPassword) {

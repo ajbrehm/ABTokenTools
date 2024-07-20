@@ -132,11 +132,32 @@ Using logonmethod 1 (CreateProcessAsUser()) or 2 (CreateProcessWithLogon()) star
 
 # RunJob
 
-**RunJob [/pid pid] [/image pathImage] [/processlimit processlimit] [/sessionid sessionid] [/domain sDomain] [/user sUser] [/password sPassword] [/args ...]**
+**RunJob /PId pid /JobProcessLimit limit**
 
-Starts a program pathImage or modifies the settings of a running process with pid pid to run inside a job with a process limit of processlimit (for example 1). Further arguments are passed to the program if started with RunJob.
+Sets a job quota on process with id pid.
 
-This is a proof-of-concept and not of much practical use.
+**RunJob /Image pathImage [/JobProcessLimit limit] [[/Domain sDomain] /User sUser] [/Password sPassword] [/args ...]**
+
+Runs a program with an optional job quota and optionally using implicit credentials.
+
+**RunJob /Image pathImage [/JobProcessLimit limit] [/Domain sDomain] /User sUser [/Password sPassword] /SessionId sessionid [/LoadProfile] [/args ...]**
+
+Runs a program with an optional job quota and using implicit credentials in a specific session.
+
+**RunJob /Image pathImage [/JobProcessLimit limit] /SessionId sessionid [/args ...]**
+
+Runs a program with an optional job quota in a specific session using the session owner's logon session.
+
+**RunJob /Image pathImage /UseRunAs [/args ...]**
+
+Runs a program using ShellExecute() and the RunAs verb. This is the equivalent of PowerShell's Start-Process -Verb RunAs.
+
+**RunJob /WindowStationPermission [/Domain sDomain] /User sUser**
+
+Sets permissions for an account on the current user's window station (which is useful before trying to start a program into this session).
+
+Note the PowerShell Just-Enough-Admin configuration example for a way to use this.
+
 
 # RunToken
 
