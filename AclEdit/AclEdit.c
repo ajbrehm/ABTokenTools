@@ -172,11 +172,7 @@ int main()
 		Error(L"ConvertStringSecurityDescriptorToSecurityDescriptor");
 
 		BOOL tfOwnerDefaulted = FALSE;
-<<<<<<< HEAD
-		ok = GetSecurityDescriptorOwner(psd, &owner, &tfOwnerDefaulted);
-=======
 		ok = GetSecurityDescriptorOwner(pSD, &owner, &tfOwnerDefaulted);
->>>>>>> minerva2
 		Error(L"GetSecurityDescriptorOwner");
 
 		if (NULL != owner) {
@@ -187,11 +183,7 @@ int main()
 
 		BOOL tfDaclpresent = FALSE;
 		BOOL tfDaclDefaulted = FALSE;
-<<<<<<< HEAD
-		ok = GetSecurityDescriptorDacl(psd, &tfDaclpresent, &pdacl, &tfDaclDefaulted);
-=======
 		ok = GetSecurityDescriptorDacl(pSD, &tfDaclpresent, &pdacl, &tfDaclDefaulted);
->>>>>>> minerva2
 		Error(L"GetSecurityDescriptorDacl");
 
 		if (NULL != pdacl) {
