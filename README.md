@@ -140,7 +140,7 @@ Sets a job quota on process with id pid.
 
 Runs a program with an optional job quota and optionally using implicit credentials.
 
-**RunJob /Image pathImage [/JobProcessLimit limit] [/Domain sDomain] /User sUser [/Password sPassword] /SessionId sessionid [/args ...]**
+**RunJob /Image pathImage [/JobProcessLimit limit] [/Domain sDomain] /User sUser [/Password sPassword] /SessionId sessionid [/LoadProfile] [/args ...]**
 
 Runs a program with an optional job quota and using implicit credentials in a specific session.
 
@@ -155,6 +155,8 @@ Runs a program using ShellExecute() and the RunAs verb. This is the equivalent o
 **RunJob /WindowStationPermission [/Domain sDomain] /User sUser**
 
 Sets permissions for an account on the current user's window station (which is useful before trying to start a program into this session).
+
+Note the PowerShell Just-Enough-Admin configuration example for a way to use this.
 
 
 # RunToken

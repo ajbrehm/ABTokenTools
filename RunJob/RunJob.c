@@ -133,7 +133,7 @@ void Help()
 	wprintf(L"\n");
 	wprintf(L"#0: RunJob /PId pid /JobProcessLimit limit (appplies quota to running process)\n\n");
 	wprintf(L"#1: RunJob /Image pathImage [/JobProcessLimit limit] [[/Domain sDomain] /User sUser] [/Password sPassword] [/args ...] (creates a process with various attributes)\n\n");
-	wprintf(L"#2: RunJob /Image pathImage [/JobProcessLimit limit] [/Domain sDomain] /User sUser [/Password sPassword] /SessionId sessionid [/args ...] (creates a process in another session)\n\n");
+	wprintf(L"#2: RunJob /Image pathImage [/JobProcessLimit limit] [/Domain sDomain] /User sUser [/Password sPassword] /SessionId sessionid [/LoadProfile] [/args ...] (creates a process in another session)\n\n");
 	wprintf(L"#3: RunJob /Image pathImage [/JobProcessLimit limit] /SessionId sessionid [/args ...] (creates a process in another session as that session's user)\n\n");
 	wprintf(L"#4: RunJob /Image pathImage /UseRunAs [/args ...] (spawns a process using RunAs verb)\n\n");
 	wprintf(L"#5: RunJob /WindowStationPermission [/Domain sDomain] /User sUser (allows user access to session window station, use before #2)\n\n");
@@ -180,6 +180,7 @@ int main()
 	BOOL tfCreateJob = FALSE;
 	BOOL tfRunAs = FALSE;
 	BOOL tfWindowStationPermission = FALSE;
+	BOOL tfLoadProfile = FALSE;
 
 	for (int i = 1; i < args; i++) {
 		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCmdLine[i], -1, L"/args", 5, NULL, NULL, 0)) {
@@ -230,6 +231,9 @@ int main()
 		}//if
 		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCmdLine[i], -1, L"/WindowStationPermission", 24, NULL, NULL, 0)) {
 			tfWindowStationPermission = TRUE;
+		}//if
+		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, aCmdLine[i], -1, L"/LoadProfile", 12, NULL, NULL, 0)) {
+			tfLoadProfile = TRUE;
 		}//if
 	}//for
 
@@ -378,6 +382,12 @@ int main()
 				type = *pType;
 				if (debug) { wprintf(L"Token elevation type is [%d]. (1=default, 2=elevated, 3=limited)\n", type); }
 				HeapFree(GetProcessHeap(), 0, pType);
+
+				if (tfLoadProfile) {
+					PROFILEINFOW profile;
+					profile.dwSize - sizeof(PROFILEINFOW);
+					ok = LoadUserProfileW(hToken, &profile);
+				}//if
 
 				EnablePrivilege(L"SeTcbPrivilege");
 				ok = SetTokenInformation(hToken, TokenSessionId, &sessionid, sizeof(DWORD));
