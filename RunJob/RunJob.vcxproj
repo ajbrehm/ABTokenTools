@@ -37,6 +37,18 @@
   <ItemGroup>
     <ClCompile Include="RunJob.c" />
   </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="PowerShell\RunJob.pssc">
+      <DeploymentContent>true</DeploymentContent>
+      <FileType>Document</FileType>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="PowerShell\RunJob_IIS.psrc">
+      <FileType>Document</FileType>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="PowerShell\RunJob_iismgr.ps1">
+      <FileType>Document</FileType>
+    </CopyFileToFolders>
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>

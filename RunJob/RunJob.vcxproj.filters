@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="RunJob.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="PowerShell">
+      <UniqueIdentifier>{a295fff1-73bb-4d92-98d1-68445cd45a53}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="PowerShell\RunJob.pssc">
+      <Filter>PowerShell</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="PowerShell\RunJob_IIS.psrc">
+      <Filter>PowerShell</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="PowerShell\RunJob_iismgr.ps1">
+      <Filter>PowerShell</Filter>
+    </CopyFileToFolders>
+  </ItemGroup>
+</Project>

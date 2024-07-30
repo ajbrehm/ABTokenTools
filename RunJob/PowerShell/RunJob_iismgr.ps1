@@ -8,7 +8,7 @@ if (!$?) {
     return
 }#
 $winstation = (Get-Process -Id $pid).SI
-.\RunJob /WindowStationPermission /User LocalIISAdmin
+.\RunJob /WindowStationPermission /User IISAdmin
 Invoke-Command $session {
     param($winstation)
     iismgr $winstation
