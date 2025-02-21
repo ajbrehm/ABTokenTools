@@ -12,7 +12,7 @@ LPWSTR sddl; // an sddl for a dacl
 PSECURITY_DESCRIPTOR pSD = NULL; // a pointer to a security descriptor
 PACL pdacl = NULL; // a pointer to a DACL
 PSID owner = NULL; // a pointer to an owner
-BOOL debug = FALSE;
+BOOL debug = TRUE;
 HANDLE handle = NULL; // in case a handle is needed for something
 DWORD pid = 0; // in case a pid is needed
 DWORD result = 0; // store return code
@@ -143,6 +143,13 @@ int main()
 		if (NULL == handle) {
 			handle = OpenDesktopW(pathObject, 0, FALSE, GENERIC_ALL);
 			Error(L"OpenDesktopW");
+		}//if
+	}//if
+
+	if (SE_SERVICE == objecttype) {
+		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, pathObject, -1, L"SCManager", 9, NULL, NULL, 0)) {
+			handle = OpenSCManager(NULL, NULL, GENERIC_ALL);
+			Error(L"OpenSCManager");
 		}//if
 	}//if
 
