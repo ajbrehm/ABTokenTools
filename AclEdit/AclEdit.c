@@ -12,7 +12,7 @@ LPWSTR sddl; // an sddl for a dacl
 PSECURITY_DESCRIPTOR pSD = NULL; // a pointer to a security descriptor
 PACL pdacl = NULL; // a pointer to a DACL
 PSID owner = NULL; // a pointer to an owner
-BOOL debug = TRUE;
+BOOL debug = FALSE;
 HANDLE handle = NULL; // in case a handle is needed for something
 DWORD pid = 0; // in case a pid is needed
 DWORD result = 0; // store return code
