@@ -68,17 +68,17 @@ DWORD AccountRights(PSID pSid)
 	return rights;
 }
 
-void AddAccountRight(PSID pSid, LPWSTR szPrivilege, BOOL tfRemove)
+void AddAccountRight(PSID pSid, LPWSTR szPrivilege, BOOL tfFalseToRemove)
 {
 	USHORT cbPrivilege = (USHORT)(lstrlenW(szPrivilege) * sizeof(WCHAR));
 	LSA_UNICODE_STRING lusPrivilege;
 	lusPrivilege.Buffer = szPrivilege;
 	lusPrivilege.Length = cbPrivilege;
 	lusPrivilege.MaximumLength = cbPrivilege;
-	if (tfRemove) {
-		error = LsaRemoveAccountRights(hPolicy, pSid, FALSE, &lusPrivilege, 1L);
-	} else {
+	if (tfFalseToRemove) {
 		error = LsaAddAccountRights(hPolicy, pSid, &lusPrivilege, 1L);
+	} else {
+		error = LsaRemoveAccountRights(hPolicy, pSid, FALSE, &lusPrivilege, 1L);
 	}//if
 }
 
@@ -90,7 +90,7 @@ void ConfigureCommandLine()
 
 void Help()
 {
-	wprintf(L"%s\n", L"AccountRights by Andrew Brehm, Version 0.2 (WCHAR)");
+	wprintf(L"%s\n", L"AccountRights by Andrew Brehm, Version 0.3");
 	wprintf(L"%s\n", L"Usage: AccountRights <username> [<rightprivilege>] [REMOVE]");
 	wprintf(L"%s\n", L"Example: AccountRights hubert");
 	wprintf(L"%s\n", L"Example: AccountRights hubert SeBatchLogonRight");
@@ -105,24 +105,22 @@ int main()
 	OpenPolicy();
 
 	LPWSTR szUserName = aCommandLine[1];
-	//LPWSTR szUserName = L"administrators";
 	TranslateUserNameToSid(szUserName);
 
 	DWORD rights = AccountRights(pSid);
-	//wprintf(L"%d\n",rights);
 	fwprintf(stderr, L"%d\n", rights);
 	if (args < 3) { return 0; }
 
 	LPWSTR szPrivilege = aCommandLine[2];
 	if (args < 4) {
-		AddAccountRight(pSid, szPrivilege, FALSE);
+		AddAccountRight(pSid, szPrivilege, TRUE);
 	} else {
 		LPWSTR szCommand = aCommandLine[3];
 		DWORD cchCommand = lstrlenW(szCommand);
 		LPWSTR szRemoveCommand = L"REMOVE";
 		DWORD cchRemoveCommand = lstrlenW(szRemoveCommand);
 		if (CSTR_EQUAL == CompareStringW(LOCALE_SYSTEM_DEFAULT, NORM_IGNORECASE, szCommand, cchCommand, szRemoveCommand, cchRemoveCommand)) {
-			AddAccountRight(pSid, szPrivilege, TRUE);
+			AddAccountRight(pSid, szPrivilege, FALSE);
 		}//if
 	}//if
 
