@@ -19,7 +19,8 @@ DWORD result = 0; // store return code
 
 void help()
 {
-	wprintf(L"AclEdit type pathObject [sddl] [D|E]\n\n");
+	wprintf(L"\nAclEdit type pathObject [<sddl>] [D|E]\n");
+	wprintf(L"AclEdit type pathObject SetOwner [<newowner>] [FullControl|Read]\n\n");
 	wprintf(L"%s\n", L"0\tSE_UNKNOWN_OBJECT_TYPE");
 	wprintf(L"%s\n", L"1\tSE_FILE_OBJECT");
 	wprintf(L"%s\n", L"2\tSE_SERVICE");
@@ -38,9 +39,10 @@ void help()
 	wprintf(L"Disable or enable inheritance with AclEdit type pathObject sddl D|E.\n");
 	wprintf(L"File, service, printer, registry, and share objects take UNC paths. DS_OBJECT takes X.500 format.\n");
 	wprintf(L"Registry paths start with \"CLASSES_ROOT\", \"CURRENT_USER\", \"MACHINE\", and \"USERS\". \"MACHINE\\SOFTWARE\" is a key.\n");
-	wprintf(L"\"6 pid\" will display ACL of process with id pid\n");
-	wprintf(L"\"6 \\KernelObjects\\Session#\" will display ACL of session number #.\n");
-	wprintf(L"\"7 WinSta0 or 7 Default\" will display permissions of the current session's window station 0 or default desktop.\n\n");
+	wprintf(L"Registry paths starting with \"HKLM:\" or \"HKCU:\" will be translated into native path names.\n");
+	wprintf(L"\"AclEdit 6 pid\" will display ACL of process with id pid\n");
+	wprintf(L"\"AclEdit 6 \\KernelObjects\\Session#\" will display ACL of session number #.\n");
+	wprintf(L"\"AclEdit 7 WinSta0\" or \"AclEdit 7 Default\" will display permissions of the current session's window station 0 or default desktop.\n\n");
 }
 
 void Error(LPCWSTR sz)
