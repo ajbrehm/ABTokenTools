@@ -25,7 +25,7 @@
 #include <wchar.h>
 
 HANDLE hHeap;
-LPWSTR sSid = NULL;
+PWSTR sSid = NULL;
 int error = 0;
 
 int LookupAccountNameAndStore(LPWSTR sAccountName)
@@ -53,8 +53,7 @@ int main()
 	int count = 0;
 	LPWSTR *aCommandLine = CommandLineToArgvW(sCommandLine, &count);
 	LPWSTR sAccountName = aCommandLine[1];
-	//LookupAccountNameAndStore(sAccountName);
-	LookupAccountNameAndStore(L"ajbrehm");
+	LookupAccountNameAndStore(sAccountName);
 	wprintf(L"%s\n",sSid);
 	LocalFree(sSid);
 	sSid = NULL;
