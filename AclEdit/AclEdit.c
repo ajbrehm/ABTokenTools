@@ -4,6 +4,8 @@
 #include <AclAPI.h>
 #include <winternl.h>
 
+#define BUFFERSIZE 1024
+
 LSTATUS status = 0;
 BOOL ok = FALSE;
 DWORD error = 0;
@@ -16,11 +18,96 @@ BOOL debug = FALSE;
 HANDLE handle = NULL; // in case a handle is needed for something
 DWORD pid = 0; // in case a pid is needed
 DWORD result = 0; // store return code
+LPWSTR sDomainAccountName = NULL;
+PWSTR sSid = NULL;
+
+int LookupAccountNameAndStore(LPWSTR sAccountName)
+{
+	DWORD cbSid = 0;
+	DWORD cchDomainName = 0;
+	SID_NAME_USE use = 0;
+	LookupAccountNameW(NULL, sAccountName, NULL, &cbSid, NULL, &cchDomainName, &use);
+	LPWSTR sDomainName = GlobalAlloc(0, cchDomainName * sizeof(WCHAR));
+	PSID pSid = GlobalAlloc(0, cbSid);
+	LookupAccountNameW(NULL, sAccountName, pSid, &cbSid, sDomainName, &cchDomainName, &use);
+	sSid = NULL;
+	if (NULL != pSid) { ConvertSidToStringSidW(pSid, &sSid); }
+	GlobalFree(pSid);
+	pSid = NULL;
+	GlobalFree(sDomainName);
+	sDomainName = NULL;
+	return 0;
+}
+
+int LookupAccountSidAndStore(LPWSTR sSid)
+{
+	PSID pSid = GlobalAlloc(0, SECURITY_MAX_SID_SIZE);
+	ConvertStringSidToSidW(sSid, &pSid);
+	DWORD cchAccountName = 0;
+	DWORD cchDomainName = 0;
+	SID_NAME_USE use = 0;
+	LookupAccountSidW(NULL, pSid, NULL, &cchAccountName, NULL, &cchDomainName, &use);
+	LPWSTR sAccountName = GlobalAlloc(0, cchAccountName * sizeof(WCHAR));
+	if (NULL == sAccountName) { return 8; }
+	LPWSTR sDomainName = GlobalAlloc(0, cchDomainName * sizeof(WCHAR));
+	if (NULL == sDomainName) { return 8; }
+	LookupAccountSidW(NULL, pSid, sAccountName, &cchAccountName, sDomainName, &cchDomainName, &use);
+	DWORD cchDomainAccountName = cchAccountName + sizeof(L"\\") + cchAccountName + sizeof(L"\0");
+	sDomainAccountName = (LPWSTR)GlobalAlloc(0, cchDomainAccountName * sizeof(WCHAR));
+	if (NULL == sDomainAccountName) { return 8; }
+	wcscpy_s(sDomainAccountName, cchDomainAccountName, sDomainName);
+	wcscat_s(sDomainAccountName, cchDomainAccountName, L"\\");
+	wcscat_s(sDomainAccountName, cchDomainAccountName, sAccountName);
+	GlobalFree(pSid);
+	pSid = NULL;
+	GlobalFree(sAccountName);
+	sAccountName = NULL;
+	GlobalFree(sDomainName);
+	sDomainName = NULL;
+	return 0;
+}
+
+int ConvertSddlWithAcountNamesToSddl(LPWSTR sddlWithAccountNames)
+{
+	DWORD cbSddlWithAccountNames = wcslen(sddlWithAccountNames) * sizeof(WCHAR) + wcslen(L"\0") * sizeof(WCHAR);
+	LPWSTR sCopyOfSddlWithAccountNames = GlobalAlloc(0, cbSddlWithAccountNames);
+	if (NULL == sCopyOfSddlWithAccountNames) { return 8; }
+	wcscpy_s(sCopyOfSddlWithAccountNames, cbSddlWithAccountNames, sddlWithAccountNames);
+	LPWSTR context = GlobalAlloc(0, wcslen(sddlWithAccountNames) * sizeof(WCHAR));
+	if (NULL == context) { return 8; }
+	LPWSTR token = wcstok_s(sddlWithAccountNames, L":;()", &context);
+	DWORD cbSddlWithoutAccountNames = wcslen(token) * sizeof(WCHAR) + BUFFERSIZE;
+	LPWSTR sddlWithoutAccountNames = (LPWSTR)GlobalAlloc(0, cbSddlWithoutAccountNames);
+	if (NULL == sddlWithoutAccountNames) { return 8; }
+	if (token) {
+		wcscpy_s(sddlWithoutAccountNames, cbSddlWithoutAccountNames, L"");
+	}//if
+	while (token) {
+		sSid = NULL;
+		LookupAccountNameAndStore(token);
+		if (NULL != sSid) { token = sSid; }
+		//wprintf(L"Token [%s]\n", token);
+		//wprintf(L"Context [%s]\n",context);
+		wcscat_s(sddlWithoutAccountNames, cbSddlWithoutAccountNames, token);
+		//wprintf(L"sddlWithoutAccountNames [%s]\n", sddlWithoutAccountNames);
+		WCHAR delimiter = sCopyOfSddlWithAccountNames[token - sddlWithAccountNames + wcslen(token)];
+		wprintf(L"Delimiter [%c]\n", delimiter);
+		DWORD posDelimiter = wcslen(sddlWithoutAccountNames);
+		sddlWithoutAccountNames[posDelimiter] = delimiter;
+		sddlWithoutAccountNames[posDelimiter + 1] = L'\0';
+		wprintf(L"sddlWithoutAccountNames [%s]\n", sddlWithoutAccountNames);
+		token = wcstok_s(NULL, L":;()", &context);
+	}//while
+	DWORD posDelimiter = wcslen(sddlWithoutAccountNames);
+	sddlWithoutAccountNames[posDelimiter] = L')';
+	sddlWithoutAccountNames[posDelimiter + 1] = L'\0';
+	sddl = sddlWithoutAccountNames;
+	return 0;
+}
 
 void help()
 {
 	wprintf(L"\nAclEdit type pathObject [<sddl>] [D|E]\n");
-	wprintf(L"AclEdit type pathObject SetOwner [<newowner>] [FullControl|Read]\n\n");
 	wprintf(L"%s\n", L"0\tSE_UNKNOWN_OBJECT_TYPE");
 	wprintf(L"%s\n", L"1\tSE_FILE_OBJECT");
 	wprintf(L"%s\n", L"2\tSE_SERVICE");
@@ -36,7 +123,8 @@ void help()
 	wprintf(L"%s\n", L"12\tSE_REGISTRY_WOW64_32KEY");
 	wprintf(L"%s\n", L"13\tSE_REGISTRY_WOW64_64KEY\n");
 	wprintf(L"Currently supports setting DACLs and owners. Setting an owner might require the appropriate privilege.\n");
-	wprintf(L"Disable or enable inheritance with AclEdit type pathObject sddl D|E.\n");
+	wprintf(L"Disable or enable inheritance with \"AclEdit type pathObject sddl D|E\".\n");
+	wprintf(L"Account name will be translated into SIDs. Hopefully.\n");
 	wprintf(L"File, service, printer, registry, and share objects take UNC paths. DS_OBJECT takes X.500 format.\n");
 	wprintf(L"Registry paths start with \"CLASSES_ROOT\", \"CURRENT_USER\", \"MACHINE\", and \"USERS\". \"MACHINE\\SOFTWARE\" is a key.\n");
 	wprintf(L"Registry paths starting with \"HKLM:\" or \"HKCU:\" will be translated into native path names.\n");
@@ -99,7 +187,6 @@ typedef NTSTATUS(WINAPI* NtOpenSessionCall) (
 
 int main()
 {
-
 	LPWSTR szCommandLine = GetCommandLineW();
 	int args = 0;
 	LPWSTR* aCommandLine = CommandLineToArgvW(szCommandLine, &args);
@@ -124,6 +211,7 @@ int main()
 		}//if
 		if (NULL == handle) {
 			HMODULE hNtdll = GetModuleHandleW(L"ntdll.dll");
+			if (NULL == hNtdll) { return 8; }
 			Error(L"GetModuleHandleW");
 			NtOpenSessionCall NtOpenSession = (NtOpenSessionCall)GetProcAddress(hNtdll, "NtOpenSession");
 			Error(L"GetProcAddress");
@@ -148,13 +236,6 @@ int main()
 		}//if
 	}//if
 
-	if (SE_SERVICE == objecttype) {
-		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, pathObject, -1, L"SCManager", 9, NULL, NULL, 0)) {
-			handle = OpenSCManager(NULL, NULL, GENERIC_ALL);
-			Error(L"OpenSCManager");
-		}//if
-	}//if
-
 	SECURITY_INFORMATION DACL_AND_OWNER_SECURITY_INFORMATION = DACL_SECURITY_INFORMATION | OWNER_SECURITY_INFORMATION;
 	SECURITY_INFORMATION DACL_SECURITY_INFORMATION_AND_THEN_SOME = DACL_SECURITY_INFORMATION;
 
@@ -175,7 +256,19 @@ int main()
 		}//if
 
 		sddl = aCommandLine[3];
+
+		wprintf(L"%s\n", sddl);
+		ConvertSddlWithAcountNamesToSddl(sddl);
+		wprintf(L"%s\n", sddl);
+		exit(0);
+
 		if (debug) { fwprintf(stderr, L"SDDL given:\t%s\n", sddl); }
+
+		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, sddl, -1, L"+", 1, NULL, NULL, 0)) {
+			GetSecurityInfoWrapper(handle, pathObject, (SE_OBJECT_TYPE)objecttype, DACL_AND_OWNER_SECURITY_INFORMATION, NULL, NULL, NULL, NULL, &pSD);
+		}//if
+
+		if (debug) { fwprintf(stderr, L"SDDL given after checking for addition:\t%s\n", sddl); }
 
 		ok = ConvertStringSecurityDescriptorToSecurityDescriptor(sddl, SDDL_REVISION_1, &pSD, NULL);
 		Error(L"ConvertStringSecurityDescriptorToSecurityDescriptor");
