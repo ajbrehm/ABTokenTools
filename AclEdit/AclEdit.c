@@ -15,7 +15,7 @@ LPWSTR sddl; // an sddl for a dacl
 PSECURITY_DESCRIPTOR pSD = NULL; // a pointer to a security descriptor
 PACL pdacl = NULL; // a pointer to a DACL
 PSID owner = NULL; // a pointer to an owner
-BOOL debug = FALSE;
+BOOL debug = TRUE;
 HANDLE handle = NULL; // in case a handle is needed for something
 DWORD pid = 0; // in case a pid is needed
 DWORD result = 0; // store return code
@@ -184,8 +184,11 @@ int main()
 		DWORD cchPathObjectTranslated = cchHive + wcslen(pathObject) - HIVEDRIVESIZE;
 		LPWSTR pathObjectTranslated = GlobalAlloc(0, cchPathObjectTranslated + sizeof(L"\0"));
 		if (NULL == pathObjectTranslated) { return 8; }
+		if (debug) { wprintf(L"0 [%s]\n", pathObjectTranslated); }
 		wcscpy_s(pathObjectTranslated, cchPathObjectTranslated, L"CURRENT_USER");
+		if (debug) { wprintf(L"1 [%s]\n", pathObjectTranslated); }
 		wcscpy_s(pathObjectTranslated + cchHive, cchPathObjectTranslated, pathObject + HIVEDRIVESIZE);
+		if (debug) { wprintf(L"2 [%s]\n", pathObjectTranslated); }
 		pathObject = pathObjectTranslated;
 	}//if
 
