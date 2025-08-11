@@ -15,7 +15,7 @@ LPWSTR sddl; // an sddl for a dacl
 PSECURITY_DESCRIPTOR pSD = NULL; // a pointer to a security descriptor
 PACL pdacl = NULL; // a pointer to a DACL
 PSID owner = NULL; // a pointer to an owner
-BOOL debug = TRUE;
+BOOL debug = FALSE;
 HANDLE handle = NULL; // in case a handle is needed for something
 DWORD pid = 0; // in case a pid is needed
 DWORD result = 0; // store return code
@@ -176,7 +176,7 @@ int main()
 	objecttype = (int)_wtoi(sObjectType);
 	Error(L"_wtoi");
 
-	pathObject = aCommandLine[2];
+	pathObject = _wcsdup(aCommandLine[2]);
 	
 	if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, pathObject, HIVEDRIVESIZE, L"HKCU:", HIVEDRIVESIZE, NULL, NULL, 0)) {
 		DWORD cchPathObject = wcslen(pathObject);
