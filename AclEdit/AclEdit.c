@@ -5,6 +5,7 @@
 #include <winternl.h>
 
 #define BUFFERSIZE 1024
+#define HIVEDRIVESIZE 5
 
 LSTATUS status = 0;
 BOOL ok = FALSE;
@@ -69,8 +70,8 @@ int LookupAccountSidAndStore(LPWSTR sSid)
 
 void help()
 {
-	wprintf(L"\nAclEdit type pathObject [<sddl>] [D|E]\n");
-	wprintf(L"AclEdit [sAccountName|sSid]\n");
+	wprintf(L"\nAclEdit <type> <pathObject> [<sddl>] [D|E]\n");
+	wprintf(L"AclEdit [<sAccountName>|<sSid>]\n\n");
 	wprintf(L"%s\n", L"0\tSE_UNKNOWN_OBJECT_TYPE");
 	wprintf(L"%s\n", L"1\tSE_FILE_OBJECT");
 	wprintf(L"%s\n", L"2\tSE_SERVICE");
@@ -87,6 +88,7 @@ void help()
 	wprintf(L"%s\n", L"13\tSE_REGISTRY_WOW64_64KEY\n");
 	wprintf(L"Currently supports setting DACLs and owners. Setting an owner might require the appropriate privilege.\n");
 	wprintf(L"Disable or enable inheritance with \"AclEdit type pathObject sddl D|E\".\n");
+	wprintf(L"Display SID for an account name or account name for a SID by giving the SID or the account name as the only parameter.\n");
 	wprintf(L"File, service, printer, registry, and share objects take UNC paths. DS_OBJECT takes X.500 format.\n");
 	wprintf(L"Registry paths start with \"CLASSES_ROOT\", \"CURRENT_USER\", \"MACHINE\", and \"USERS\". \"MACHINE\\SOFTWARE\" is a key.\n");
 	wprintf(L"Registry paths starting with \"HKLM:\" or \"HKCU:\" will be translated into native path names.\n");
@@ -175,6 +177,28 @@ int main()
 	Error(L"_wtoi");
 
 	pathObject = aCommandLine[2];
+	
+	if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, pathObject, HIVEDRIVESIZE, L"HKCU:", HIVEDRIVESIZE, NULL, NULL, 0)) {
+		DWORD cchPathObject = wcslen(pathObject);
+		DWORD cchHive = wcslen(L"CURRENT_USER");
+		DWORD cchPathObjectTranslated = cchHive + wcslen(pathObject) - HIVEDRIVESIZE;
+		LPWSTR pathObjectTranslated = GlobalAlloc(0, cchPathObjectTranslated + sizeof(L"\0"));
+		if (NULL == pathObjectTranslated) { return 8; }
+		wcscpy_s(pathObjectTranslated, cchPathObjectTranslated, L"CURRENT_USER");
+		wcscpy_s(pathObjectTranslated + cchHive, cchPathObjectTranslated, pathObject + HIVEDRIVESIZE);
+		pathObject = pathObjectTranslated;
+	}//if
+
+	if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, pathObject, HIVEDRIVESIZE, L"HKLM:", HIVEDRIVESIZE, NULL, NULL, 0)) {
+		DWORD cchPathObject = wcslen(pathObject);
+		DWORD cchHive = wcslen(L"MACHINE");
+		DWORD cchPathObjectTranslated = cchHive + wcslen(pathObject) - HIVEDRIVESIZE;
+		LPWSTR pathObjectTranslated = GlobalAlloc(0, cchPathObjectTranslated + sizeof(L"\0"));
+		if (NULL == pathObjectTranslated) { return 8; }
+		wcscpy_s(pathObjectTranslated, cchPathObjectTranslated, L"MACHINE");
+		wcscpy_s(pathObjectTranslated + cchHive, cchPathObjectTranslated, pathObject + HIVEDRIVESIZE);
+		pathObject = pathObjectTranslated;
+	}//if
 
 	DWORD pid = 0;
 	if (SE_KERNEL_OBJECT == objecttype) {
@@ -231,12 +255,6 @@ int main()
 		sddl = aCommandLine[3];
 
 		if (debug) { fwprintf(stderr, L"SDDL given:\t%s\n", sddl); }
-
-		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, sddl, -1, L"+", 1, NULL, NULL, 0)) {
-			GetSecurityInfoWrapper(handle, pathObject, (SE_OBJECT_TYPE)objecttype, DACL_AND_OWNER_SECURITY_INFORMATION, NULL, NULL, NULL, NULL, &pSD);
-		}//if
-
-		if (debug) { fwprintf(stderr, L"SDDL given after checking for addition:\t%s\n", sddl); }
 
 		ok = ConvertStringSecurityDescriptorToSecurityDescriptor(sddl, SDDL_REVISION_1, &pSD, NULL);
 		Error(L"ConvertStringSecurityDescriptorToSecurityDescriptor");
