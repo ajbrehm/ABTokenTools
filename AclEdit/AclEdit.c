@@ -67,47 +67,10 @@ int LookupAccountSidAndStore(LPWSTR sSid)
 	return 0;
 }
 
-int ConvertSddlWithAcountNamesToSddl(LPWSTR sddlWithAccountNames)
-{
-	DWORD cbSddlWithAccountNames = wcslen(sddlWithAccountNames) * sizeof(WCHAR) + wcslen(L"\0") * sizeof(WCHAR);
-	LPWSTR sCopyOfSddlWithAccountNames = GlobalAlloc(0, cbSddlWithAccountNames);
-	if (NULL == sCopyOfSddlWithAccountNames) { return 8; }
-	wcscpy_s(sCopyOfSddlWithAccountNames, cbSddlWithAccountNames, sddlWithAccountNames);
-	LPWSTR context = GlobalAlloc(0, wcslen(sddlWithAccountNames) * sizeof(WCHAR));
-	if (NULL == context) { return 8; }
-	LPWSTR token = wcstok_s(sddlWithAccountNames, L":;()", &context);
-	DWORD cbSddlWithoutAccountNames = wcslen(token) * sizeof(WCHAR) + BUFFERSIZE;
-	LPWSTR sddlWithoutAccountNames = (LPWSTR)GlobalAlloc(0, cbSddlWithoutAccountNames);
-	if (NULL == sddlWithoutAccountNames) { return 8; }
-	if (token) {
-		wcscpy_s(sddlWithoutAccountNames, cbSddlWithoutAccountNames, L"");
-	}//if
-	while (token) {
-		sSid = NULL;
-		LookupAccountNameAndStore(token);
-		if (NULL != sSid) { token = sSid; }
-		//wprintf(L"Token [%s]\n", token);
-		//wprintf(L"Context [%s]\n",context);
-		wcscat_s(sddlWithoutAccountNames, cbSddlWithoutAccountNames, token);
-		//wprintf(L"sddlWithoutAccountNames [%s]\n", sddlWithoutAccountNames);
-		WCHAR delimiter = sCopyOfSddlWithAccountNames[token - sddlWithAccountNames + wcslen(token)];
-		wprintf(L"Delimiter [%c]\n", delimiter);
-		DWORD posDelimiter = wcslen(sddlWithoutAccountNames);
-		sddlWithoutAccountNames[posDelimiter] = delimiter;
-		sddlWithoutAccountNames[posDelimiter + 1] = L'\0';
-		wprintf(L"sddlWithoutAccountNames [%s]\n", sddlWithoutAccountNames);
-		token = wcstok_s(NULL, L":;()", &context);
-	}//while
-	DWORD posDelimiter = wcslen(sddlWithoutAccountNames);
-	sddlWithoutAccountNames[posDelimiter] = L')';
-	sddlWithoutAccountNames[posDelimiter + 1] = L'\0';
-	sddl = sddlWithoutAccountNames;
-	return 0;
-}
-
 void help()
 {
 	wprintf(L"\nAclEdit type pathObject [<sddl>] [D|E]\n");
+	wprintf(L"AclEdit [sAccountName|sSid]\n");
 	wprintf(L"%s\n", L"0\tSE_UNKNOWN_OBJECT_TYPE");
 	wprintf(L"%s\n", L"1\tSE_FILE_OBJECT");
 	wprintf(L"%s\n", L"2\tSE_SERVICE");
@@ -124,7 +87,6 @@ void help()
 	wprintf(L"%s\n", L"13\tSE_REGISTRY_WOW64_64KEY\n");
 	wprintf(L"Currently supports setting DACLs and owners. Setting an owner might require the appropriate privilege.\n");
 	wprintf(L"Disable or enable inheritance with \"AclEdit type pathObject sddl D|E\".\n");
-	wprintf(L"Account name will be translated into SIDs. Hopefully.\n");
 	wprintf(L"File, service, printer, registry, and share objects take UNC paths. DS_OBJECT takes X.500 format.\n");
 	wprintf(L"Registry paths start with \"CLASSES_ROOT\", \"CURRENT_USER\", \"MACHINE\", and \"USERS\". \"MACHINE\\SOFTWARE\" is a key.\n");
 	wprintf(L"Registry paths starting with \"HKLM:\" or \"HKCU:\" will be translated into native path names.\n");
@@ -191,7 +153,18 @@ int main()
 	int args = 0;
 	LPWSTR* aCommandLine = CommandLineToArgvW(szCommandLine, &args);
 
-	if (args < 3) {
+	if (2 == args) {
+		LookupAccountNameAndStore(aCommandLine[1]);
+		if (NULL == sSid) {
+			LookupAccountSidAndStore(aCommandLine[1]);
+			wprintf(sDomainAccountName);
+		} else {
+			wprintf(sSid);
+		}//if
+		return 0;
+	}//if
+	
+	if (args < 2) {
 		help();
 		exit(0);
 	}//if
@@ -256,11 +229,6 @@ int main()
 		}//if
 
 		sddl = aCommandLine[3];
-
-		wprintf(L"%s\n", sddl);
-		ConvertSddlWithAcountNamesToSddl(sddl);
-		wprintf(L"%s\n", sddl);
-		exit(0);
 
 		if (debug) { fwprintf(stderr, L"SDDL given:\t%s\n", sddl); }
 
