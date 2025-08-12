@@ -23,32 +23,35 @@ This also applies to other commands.
 
 # AclEdit
 
-**AclEdit type pathObject [sddl] [D|E]**
 
-Sets a security descriptor in sddl format on an object at pathObject of the type type and optionally enables or disables inheritance.
+**AclEdit <type> <pathObject> [<sddl>] [D|E]**
+**AclEdit [<sAccountName>|<sSid>]**
 
-Types are these:  
-0       SE_UNKNOWN_OBJECT_TYPE  
-1       SE_FILE_OBJECT  
-2       SE_SERVICE  
-3       SE_PRINTER  
-4       SE_REGISTRY_KEY  
-5       SE_LMSHARE  
-6       SE_KERNEL_OBJECT  
-7       SE_WINDOW_OBJECT  
-8       SE_DS_OBJECT  
-9       SE_DS_OBJECT_ALL  
-10      SE_PROVIDER_DEFINED_OBJECT  
-11      SE_WMIGUID_OBJECT  
-12      SE_REGISTRY_WOW64_32KEY  
-13      SE_REGISTRY_WOW64_64KEY  
+0	SE_UNKNOWN_OBJECT_TYPE
+1	SE_FILE_OBJECT
+2	SE_SERVICE
+3	SE_PRINTER
+4	SE_REGISTRY_KEY
+5	SE_LMSHARE
+6	SE_KERNEL_OBJECT
+7	SE_WINDOW_OBJECT
+8	SE_DS_OBJECT
+9	SE_DS_OBJECT_ALL
+10	SE_PROVIDER_DEFINED_OBJECT
+11	SE_WMIGUID_OBJECT
+12	SE_REGISTRY_WOW64_32KEY
+13	SE_REGISTRY_WOW64_64KEY
 
-Currently supports setting DACLs and owners. Setting an owner might require the appropriate privilege.  
-Disable or enable inheritance with AclEdit type pathObject sddl D|E.  
-File, service, printer, registry, and share objects take UNC paths, DS_OBJECT takes X.500 format.  
-"6 pid" will display ACL of process with id pid  
-"6 \KernelObjects\Session#" will display ACL of session number #.  
-"7 WinSta0 or 7 Default" will display permissions of the current session's window station 0 or default desktop.  
+Currently supports setting DACLs and owners. Setting an owner might require the appropriate privilege.
+Disable or enable inheritance with "AclEdit type pathObject sddl D|E".
+Display SID for an account name or account name for a SID by giving the SID or the account name as the only parameter.
+File, service, printer, registry, and share objects take UNC paths. DS_OBJECT takes X.500 format.
+Registry paths start with "CLASSES_ROOT", "CURRENT_USER", "MACHINE", and "USERS". "MACHINE\SOFTWARE" is a key.
+Registry paths starting with "HKLM:" or "HKCU:" will be translated into native path names.
+"AclEdit 6 pid" will display ACL of process with id pid
+"AclEdit 6 \KernelObjects\Session#" will display ACL of session number #.
+"AclEdit 7 WinSta0" or "AclEdit 7 Default" will display permissions of the current session's window station 0 or default desktop.
+
 
 **AclEdit 1 "C:\"**
 

@@ -4,6 +4,9 @@
 #include <AclAPI.h>
 #include <winternl.h>
 
+#define BUFFERSIZE 1024
+#define HIVEDRIVESIZE 5
+
 LSTATUS status = 0;
 BOOL ok = FALSE;
 DWORD error = 0;
@@ -16,10 +19,59 @@ BOOL debug = FALSE;
 HANDLE handle = NULL; // in case a handle is needed for something
 DWORD pid = 0; // in case a pid is needed
 DWORD result = 0; // store return code
+LPWSTR sDomainAccountName = NULL;
+PWSTR sSid = NULL;
+
+int LookupAccountNameAndStore(LPWSTR sAccountName)
+{
+	DWORD cbSid = 0;
+	DWORD cchDomainName = 0;
+	SID_NAME_USE use = 0;
+	LookupAccountNameW(NULL, sAccountName, NULL, &cbSid, NULL, &cchDomainName, &use);
+	LPWSTR sDomainName = GlobalAlloc(0, cchDomainName * sizeof(WCHAR));
+	PSID pSid = GlobalAlloc(0, cbSid);
+	LookupAccountNameW(NULL, sAccountName, pSid, &cbSid, sDomainName, &cchDomainName, &use);
+	sSid = NULL;
+	if (NULL != pSid) { ConvertSidToStringSidW(pSid, &sSid); }
+	GlobalFree(pSid);
+	pSid = NULL;
+	GlobalFree(sDomainName);
+	sDomainName = NULL;
+	return 0;
+}
+
+int LookupAccountSidAndStore(LPWSTR sSid)
+{
+	PSID pSid = GlobalAlloc(0, SECURITY_MAX_SID_SIZE);
+	ConvertStringSidToSidW(sSid, &pSid);
+	DWORD cchAccountName = 0;
+	DWORD cchDomainName = 0;
+	SID_NAME_USE use = 0;
+	LookupAccountSidW(NULL, pSid, NULL, &cchAccountName, NULL, &cchDomainName, &use);
+	LPWSTR sAccountName = GlobalAlloc(0, cchAccountName * sizeof(WCHAR));
+	if (NULL == sAccountName) { return 8; }
+	LPWSTR sDomainName = GlobalAlloc(0, cchDomainName * sizeof(WCHAR));
+	if (NULL == sDomainName) { return 8; }
+	LookupAccountSidW(NULL, pSid, sAccountName, &cchAccountName, sDomainName, &cchDomainName, &use);
+	DWORD cchDomainAccountName = cchAccountName + sizeof(L"\\") + cchAccountName + sizeof(L"\0");
+	sDomainAccountName = (LPWSTR)GlobalAlloc(0, cchDomainAccountName * sizeof(WCHAR));
+	if (NULL == sDomainAccountName) { return 8; }
+	wcscpy_s(sDomainAccountName, cchDomainAccountName, sDomainName);
+	wcscat_s(sDomainAccountName, cchDomainAccountName, L"\\");
+	wcscat_s(sDomainAccountName, cchDomainAccountName, sAccountName);
+	GlobalFree(pSid);
+	pSid = NULL;
+	GlobalFree(sAccountName);
+	sAccountName = NULL;
+	GlobalFree(sDomainName);
+	sDomainName = NULL;
+	return 0;
+}
 
 void help()
 {
-	wprintf(L"AclEdit type pathObject [sddl] [D|E]\n\n");
+	wprintf(L"\nAclEdit <type> <pathObject> [<sddl>] [D|E]\n");
+	wprintf(L"AclEdit [<sAccountName>|<sSid>]\n\n");
 	wprintf(L"%s\n", L"0\tSE_UNKNOWN_OBJECT_TYPE");
 	wprintf(L"%s\n", L"1\tSE_FILE_OBJECT");
 	wprintf(L"%s\n", L"2\tSE_SERVICE");
@@ -35,12 +87,14 @@ void help()
 	wprintf(L"%s\n", L"12\tSE_REGISTRY_WOW64_32KEY");
 	wprintf(L"%s\n", L"13\tSE_REGISTRY_WOW64_64KEY\n");
 	wprintf(L"Currently supports setting DACLs and owners. Setting an owner might require the appropriate privilege.\n");
-	wprintf(L"Disable or enable inheritance with AclEdit type pathObject sddl D|E.\n");
+	wprintf(L"Disable or enable inheritance with \"AclEdit type pathObject sddl D|E\".\n");
+	wprintf(L"Display SID for an account name or account name for a SID by giving the SID or the account name as the only parameter.\n");
 	wprintf(L"File, service, printer, registry, and share objects take UNC paths. DS_OBJECT takes X.500 format.\n");
 	wprintf(L"Registry paths start with \"CLASSES_ROOT\", \"CURRENT_USER\", \"MACHINE\", and \"USERS\". \"MACHINE\\SOFTWARE\" is a key.\n");
-	wprintf(L"\"6 pid\" will display ACL of process with id pid\n");
-	wprintf(L"\"6 \\KernelObjects\\Session#\" will display ACL of session number #.\n");
-	wprintf(L"\"7 WinSta0 or 7 Default\" will display permissions of the current session's window station 0 or default desktop.\n\n");
+	wprintf(L"Registry paths starting with \"HKLM:\" or \"HKCU:\" will be translated into native path names.\n");
+	wprintf(L"\"AclEdit 6 pid\" will display ACL of process with id pid\n");
+	wprintf(L"\"AclEdit 6 \\KernelObjects\\Session#\" will display ACL of session number #.\n");
+	wprintf(L"\"AclEdit 7 WinSta0\" or \"AclEdit 7 Default\" will display permissions of the current session's window station 0 or default desktop.\n\n");
 }
 
 void Error(LPCWSTR sz)
@@ -97,12 +151,22 @@ typedef NTSTATUS(WINAPI* NtOpenSessionCall) (
 
 int main()
 {
-
 	LPWSTR szCommandLine = GetCommandLineW();
 	int args = 0;
 	LPWSTR* aCommandLine = CommandLineToArgvW(szCommandLine, &args);
 
-	if (args < 3) {
+	if (2 == args) {
+		LookupAccountNameAndStore(aCommandLine[1]);
+		if (NULL == sSid) {
+			LookupAccountSidAndStore(aCommandLine[1]);
+			wprintf(sDomainAccountName);
+		} else {
+			wprintf(sSid);
+		}//if
+		return 0;
+	}//if
+	
+	if (args < 2) {
 		help();
 		exit(0);
 	}//if
@@ -112,7 +176,34 @@ int main()
 	objecttype = (int)_wtoi(sObjectType);
 	Error(L"_wtoi");
 
-	pathObject = aCommandLine[2];
+	pathObject = _wcsdup(aCommandLine[2]);
+	
+	if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, pathObject, HIVEDRIVESIZE, L"HKCU:", HIVEDRIVESIZE, NULL, NULL, 0)) {
+		DWORD cchPathObject = wcslen(pathObject);
+		DWORD cchHive = wcslen(L"CURRENT_USER");
+		DWORD cchPathObjectTranslated = cchHive + wcslen(pathObject) - HIVEDRIVESIZE + BUFFERSIZE;
+		LPWSTR pathObjectTranslated = GlobalAlloc(0, cchPathObjectTranslated + sizeof(L"\0"));
+		if (NULL == pathObjectTranslated) { return 8; }
+		if (debug) { wprintf(L"0 [%s]\n", pathObjectTranslated); }
+		wcscpy_s(pathObjectTranslated, cchPathObjectTranslated, L"CURRENT_USER");
+		if (debug) { wprintf(L"1 [%s]\n", pathObjectTranslated); }
+		wcscpy_s(pathObjectTranslated + cchHive, cchPathObjectTranslated, pathObject + HIVEDRIVESIZE);
+		if (debug) { wprintf(L"2 [%s]\n", pathObjectTranslated); }
+		pathObject = pathObjectTranslated;
+	}//if
+
+	if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, pathObject, HIVEDRIVESIZE, L"HKLM:", HIVEDRIVESIZE, NULL, NULL, 0)) {
+		DWORD cchPathObject = wcslen(pathObject);
+		DWORD cchHive = wcslen(L"MACHINE");
+		DWORD cchPathObjectTranslated = cchHive + wcslen(pathObject) - HIVEDRIVESIZE;
+		LPWSTR pathObjectTranslated = GlobalAlloc(0, cchPathObjectTranslated + sizeof(L"\0"));
+		if (NULL == pathObjectTranslated) { return 8; }
+		wcscpy_s(pathObjectTranslated, cchPathObjectTranslated, L"MACHINE");
+		wcscpy_s(pathObjectTranslated + cchHive, cchPathObjectTranslated, pathObject + HIVEDRIVESIZE);
+		pathObject = pathObjectTranslated;
+	}//if
+
+	if (debug) { wprintf(L"Size of pathObject [%s] is [%d] chars.\n", pathObject, wcslen(pathObject)); }
 
 	DWORD pid = 0;
 	if (SE_KERNEL_OBJECT == objecttype) {
@@ -122,6 +213,7 @@ int main()
 		}//if
 		if (NULL == handle) {
 			HMODULE hNtdll = GetModuleHandleW(L"ntdll.dll");
+			if (NULL == hNtdll) { return 8; }
 			Error(L"GetModuleHandleW");
 			NtOpenSessionCall NtOpenSession = (NtOpenSessionCall)GetProcAddress(hNtdll, "NtOpenSession");
 			Error(L"GetProcAddress");
@@ -146,13 +238,6 @@ int main()
 		}//if
 	}//if
 
-	if (SE_SERVICE == objecttype) {
-		if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, pathObject, -1, L"SCManager", 9, NULL, NULL, 0)) {
-			handle = OpenSCManager(NULL, NULL, GENERIC_ALL);
-			Error(L"OpenSCManager");
-		}//if
-	}//if
-
 	SECURITY_INFORMATION DACL_AND_OWNER_SECURITY_INFORMATION = DACL_SECURITY_INFORMATION | OWNER_SECURITY_INFORMATION;
 	SECURITY_INFORMATION DACL_SECURITY_INFORMATION_AND_THEN_SOME = DACL_SECURITY_INFORMATION;
 
@@ -173,6 +258,7 @@ int main()
 		}//if
 
 		sddl = aCommandLine[3];
+
 		if (debug) { fwprintf(stderr, L"SDDL given:\t%s\n", sddl); }
 
 		ok = ConvertStringSecurityDescriptorToSecurityDescriptor(sddl, SDDL_REVISION_1, &pSD, NULL);

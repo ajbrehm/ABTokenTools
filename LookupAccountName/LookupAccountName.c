@@ -25,31 +25,39 @@
 #include <wchar.h>
 
 HANDLE hHeap;
+PWSTR sSid = NULL;
+int error = 0;
+
+int LookupAccountNameAndStore(LPWSTR sAccountName)
+{
+	DWORD cbSid = 0;
+	DWORD cchDomainName = 0;
+	SID_NAME_USE use = 0;
+	LookupAccountNameW(NULL, sAccountName, NULL, &cbSid, NULL, &cchDomainName, &use);
+	LPWSTR sDomainName = HeapAlloc(hHeap, 0, cchDomainName * sizeof(WCHAR));
+	PSID pSid = HeapAlloc(hHeap, 0, cbSid);
+	LookupAccountNameW(NULL, sAccountName, pSid, &cbSid, sDomainName, &cchDomainName, &use);
+	sSid = L"SID was not translated";
+	if (NULL != pSid) { ConvertSidToStringSidW(pSid, &sSid); }
+	HeapFree(hHeap, 0, pSid);
+	pSid = NULL;
+	HeapFree(hHeap, 0, sDomainName);
+	sDomainName = NULL;
+	return 0;
+}
 
 int main()
 {
 	hHeap = GetProcessHeap();
-	LPWSTR szCommandLine = GetCommandLineW();
+	LPWSTR sCommandLine = GetCommandLineW();
 	int count = 0;
-	LPWSTR *aCommandLine = CommandLineToArgvW(szCommandLine, &count);
-	LPWSTR szAccountName = aCommandLine[1];
-	DWORD cbSid = 0;
-	DWORD cchDomainName = 0;
-	SID_NAME_USE use = 0;
-	LookupAccountNameW(NULL, szAccountName, NULL, &cbSid, NULL, &cchDomainName, &use);
-	LPWSTR szDomainName = HeapAlloc(hHeap, 0, cchDomainName * sizeof(WCHAR));
-	PSID pSid = HeapAlloc(hHeap, 0, cbSid);
-	LookupAccountNameW(NULL, szAccountName, pSid, &cbSid, szDomainName, &cchDomainName, &use);
-	LPWSTR szSid = L"SID was not translated";
-	if (NULL != pSid) { ConvertSidToStringSidW(pSid, &szSid); }
-	wprintf(L"%s\n",szSid);
-	LocalFree(szSid);
-	szSid = NULL;
-	HeapFree(hHeap, 0, szDomainName);
-	szDomainName = NULL;
-	HeapFree(hHeap, 0, pSid);
-	pSid = NULL;
-	return 0;
+	LPWSTR *aCommandLine = CommandLineToArgvW(sCommandLine, &count);
+	LPWSTR sAccountName = aCommandLine[1];
+	LookupAccountNameAndStore(sAccountName);
+	wprintf(L"%s\n",sSid);
+	LocalFree(sSid);
+	sSid = NULL;
+	return error;
 }
 
 

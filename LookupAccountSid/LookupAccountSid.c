@@ -25,29 +25,46 @@
 #include <wchar.h>
 
 HANDLE hHeap;
+LPWSTR sDomainAccountName = NULL;
+int error = 0;
 
-int main()
+int LookupAccountSidAndStore(LPWSTR sSid)
 {
-	hHeap = GetProcessHeap();
-	LPWSTR szCommandLine = GetCommandLineW();
-	int count = 0;
-	LPWSTR* aCommandLine = CommandLineToArgvW(szCommandLine, &count);
-	LPWSTR szSid = aCommandLine[1];
 	PSID pSid = HeapAlloc(hHeap, 0, SECURITY_MAX_SID_SIZE);
-	ConvertStringSidToSidW(szSid, &pSid);
+	ConvertStringSidToSidW(sSid, &pSid);
 	DWORD cchAccountName = 0;
 	DWORD cchDomainName = 0;
 	SID_NAME_USE use = 0;
 	LookupAccountSidW(NULL, pSid, NULL, &cchAccountName, NULL, &cchDomainName, &use);
-	LPWSTR szAccountName = HeapAlloc(hHeap, 0, cchAccountName * sizeof(WCHAR));
-	LPWSTR szDomainName = HeapAlloc(hHeap, 0, cchDomainName * sizeof(WCHAR));
-	LookupAccountSidW(NULL, pSid, szAccountName, &cchAccountName, szDomainName, &cchDomainName, &use);
-	wprintf(L"%s\n",szAccountName);
+	LPWSTR sAccountName = HeapAlloc(hHeap, 0, cchAccountName * sizeof(WCHAR));
+	if (NULL == sAccountName) { return 8; }
+	LPWSTR sDomainName = HeapAlloc(hHeap, 0, cchDomainName * sizeof(WCHAR));
+	if (NULL == sDomainName) { return 8; }
+	LookupAccountSidW(NULL, pSid, sAccountName, &cchAccountName, sDomainName, &cchDomainName, &use);
+	DWORD cchDomainAccountName = cchAccountName + sizeof(L"\\") + cchAccountName + sizeof(L"\0");
+	sDomainAccountName = (LPWSTR)HeapAlloc(hHeap, 0, cchDomainAccountName * sizeof(WCHAR));
+	if (NULL == sDomainAccountName) { return 8; }
+	wcscpy_s(sDomainAccountName,cchDomainAccountName,sDomainName);
+	wcscat_s(sDomainAccountName, cchDomainAccountName, L"\\");
+	wcscat_s(sDomainAccountName, cchDomainAccountName, sAccountName);
 	HeapFree(hHeap, 0, pSid);
 	pSid = NULL;
-	HeapFree(hHeap, 0, szAccountName);
-	szAccountName = NULL;
-	HeapFree(hHeap, 0, szDomainName);
-	szDomainName = NULL;
+	HeapFree(hHeap, 0, sAccountName);
+	sAccountName = NULL;
+	HeapFree(hHeap, 0, sDomainName);
+	sDomainName = NULL;
 	return 0;
+}
+
+int main()
+{
+	hHeap = GetProcessHeap();
+	LPWSTR sCommandLine = GetCommandLineW();
+	int count = 0;
+	LPWSTR* aCommandLine = CommandLineToArgvW(sCommandLine, &count);
+	LPWSTR sSid = aCommandLine[1];
+	error = LookupAccountSidAndStore(sSid);
+	wprintf(L"%s\n",sDomainAccountName);
+	HeapFree(hHeap, 0, sDomainAccountName);
+	return error;
 }
