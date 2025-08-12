@@ -181,7 +181,7 @@ int main()
 	if (CSTR_EQUAL == CompareStringEx(NULL, LINGUISTIC_IGNORECASE, pathObject, HIVEDRIVESIZE, L"HKCU:", HIVEDRIVESIZE, NULL, NULL, 0)) {
 		DWORD cchPathObject = wcslen(pathObject);
 		DWORD cchHive = wcslen(L"CURRENT_USER");
-		DWORD cchPathObjectTranslated = cchHive + wcslen(pathObject) - HIVEDRIVESIZE + 1;
+		DWORD cchPathObjectTranslated = cchHive + wcslen(pathObject) - HIVEDRIVESIZE + BUFFERSIZE;
 		LPWSTR pathObjectTranslated = GlobalAlloc(0, cchPathObjectTranslated + sizeof(L"\0"));
 		if (NULL == pathObjectTranslated) { return 8; }
 		if (debug) { wprintf(L"0 [%s]\n", pathObjectTranslated); }
@@ -202,6 +202,8 @@ int main()
 		wcscpy_s(pathObjectTranslated + cchHive, cchPathObjectTranslated, pathObject + HIVEDRIVESIZE);
 		pathObject = pathObjectTranslated;
 	}//if
+
+	if (debug) { wprintf(L"Size of pathObject [%s] is [%d] chars.\n", pathObject, wcslen(pathObject)); }
 
 	DWORD pid = 0;
 	if (SE_KERNEL_OBJECT == objecttype) {
