@@ -112,13 +112,13 @@ void SetWindowStationSecurity(PSID pSid)
 	ok = GetUserObjectSecurity(hWindowStation, &secinfo, NULL, 0, &size);
 	Error(L"GetUserObjectSecurity");
 	PSECURITY_DESCRIPTOR pUltimateSD = HeapAlloc(GetProcessHeap(), 0, size);
-	if (!pSD) { exit(1); }
-	ok = GetUserObjectSecurity(hWindowStation, &secinfo, pSD, size, &size);
+	if (!pUltimateSD) { exit(1); }
+	ok = GetUserObjectSecurity(hWindowStation, &secinfo, pUltimateSD, size, &size);
 	Error(L"GetUserObjectSecurity");
 
 	if (debug) {
 		sddl = NULL;
-		ok = ConvertSecurityDescriptorToStringSecurityDescriptor(pSD, SDDL_REVISION_1, DACL_SECURITY_INFORMATION, &sddl, NULL);
+		ok = ConvertSecurityDescriptorToStringSecurityDescriptor(pUltimateSD, SDDL_REVISION_1, DACL_SECURITY_INFORMATION, &sddl, NULL);
 		Error(L"ConvertSecurityDescriptorToStringSecurityDescriptor");
 		wprintf(L"sddl after: [%s]\n", sddl);
 	}//if
