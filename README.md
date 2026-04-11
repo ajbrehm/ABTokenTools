@@ -133,6 +133,13 @@ This does the same as LookupAccountName but vice versa, gets the user name for a
 Using logonmethod 1 (CreateProcessAsUser()) or 2 (CreateProcessWithLogon()) starts a program pathImage as a user defined (currently statically in the source code). Logon method 1 requires the calling user to have SeAssignPrimaryTokenPrivilege. Logon method 2 requires the Secondary Logon service to be running.  
 
 
+# RunInSession
+
+**RunInSession iSessionId pathImage [iJobLimit]**
+
+Runs a program in the specified session and with the specified job process limit. Requires SeTcbPrivilege and being run in session 0 (or by LocalSystem). Good as a shortcut to run a privileged GUI program from a scheduled task.
+
+
 # RunJob
 
 **RunJob /PId pid /JobProcessLimit limit**
@@ -173,7 +180,7 @@ This is not always possible.
 
 # S4ULogon
 
-Logs a user on without a password and does nothing. To be honest, I have forgotten what this was good for other than a proof of concept…
+Logs a user on without a password and does nothing. To be honest, I have forgotten what this was good for.
 
 
 # SessionForPId
@@ -183,6 +190,13 @@ Logs a user on without a password and does nothing. To be honest, I have forgott
 Returns the session for the PId pid in case someone wants it.
 
 
+# ShellExecute
+
+**ShellExecute [edit|explore|find|open|print|runas] pathFile**
+
+Tells the shell (Explorer) to execute the given verb (edit, explore etc.) with the given file. ShellExecute open cmd.exe will run cmd.exe. ShellExecute runas cmd.exe will run cmd.exe in elevated mode (and trigger a UAC warning).
+
+
 # TokenTest
 
 **TokenTest upn**
@@ -190,9 +204,4 @@ Returns the session for the PId pid in case someone wants it.
 Displays the privileges a user principal name would have if he logged on now. This is useful for testing effective privileges based on groups. It is a good counterpart to AccountRights above which shows the rights and privileges a security principal (user or group) has by itself.
 
 
-# ShellExecute
-
-**ShellExecute [edit|explore|find|open|print|runas] pathFile**
-
-Tells the shell (Explorer) to execute the given verb (edit, explore etc.) with the given file. ShellExecute open cmd.exe will run cmd.exe. ShellExecute runas cmd.exe will run cmd.exe in elevated mode (and trigger a UAC warning).
 
